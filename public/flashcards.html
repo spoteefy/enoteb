@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html class="dark" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chế độ Học tập Flashcards AI - Kho Tri Thức</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0a0f18",
+                        "card-dark": "#161e2d",
+                        "border-dark": "#2d3748"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark flex items-center justify-between px-6 sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<button onclick="window.location.href='/dashboard.html'" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="text-sm font-bold tracking-tight">Flashcards AI</h1>
+</div>
+</header>
+<main class="flex-1 flex flex-col items-center justify-center p-8 bg-background-light dark:bg-background-dark relative">
+<div class="w-full max-w-2xl aspect-[1.6/1] flex flex-col gap-8">
+<div id="flashcard" class="relative h-full bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl flex flex-col items-center justify-center p-12 text-center cursor-pointer">
+    <h2 id="card-text" class="text-2xl md:text-3xl font-bold leading-tight">Định luật Okun mô tả mối quan hệ giữa yếu tố nào?</h2>
+    <p id="card-instruction" class="mt-8 text-slate-500">Nhấn để xem câu trả lời</p>
+</div>
+</div>
+</main>
+<script>
+    let flipped = false;
+    const card = document.querySelector('#flashcard');
+    const text = document.querySelector('#card-text');
+    const instr = document.querySelector('#card-instruction');
+
+    card.onclick = () => {
+        flipped = !flipped;
+        if (flipped) {
+            text.textContent = "Mối quan hệ tỷ lệ nghịch giữa tỷ lệ thất nghiệp và GDP thực tế.";
+            instr.textContent = "Nhấn để quay lại câu hỏi";
+        } else {
+            text.textContent = "Định luật Okun mô tả mối quan hệ giữa yếu tố nào?";
+            instr.textContent = "Nhấn để xem câu trả lời";
+        }
+    };
+</script>
+</body></html>

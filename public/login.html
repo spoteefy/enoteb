@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html class="dark" lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Đăng nhập - Kho Tri Thức</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        :root {
+            --checkbox-tick-svg: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27white%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3cpath d=%27M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z%27/%3e%3c/svg%3e');
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white min-h-screen flex items-center justify-center p-0 m-0">
+    <div class="flex w-full min-h-screen flex-row">
+        <!-- Left Side: Hero/Illustration -->
+        <div class="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-primary">
+            <div class="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
+            <div class="relative z-10 flex flex-col justify-center px-20 gap-8">
+                <div class="w-full aspect-video bg-cover bg-center rounded-xl shadow-2xl border border-white/10" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA0Gc6BvyWLLJjAkMLzsZp7tLUNjl4ApNEHhNzEqqN179nwC4PWtniYLHv3exzTVCuz3GDBWYBe_kXTL4Jdg5Jhyk7bcLTLRmvqmQKNFQpgnkJzE3jgvpGMmFGmkS3u2XLyFpyIpzMZDz6aBmayjrf82fEpRE0EiG6CCGXr3vuL7FokDoZBmVSfMoQKrRfA5z6WzswEPTPuTDPA_T8zMMadQRJnsMg30yWqrKGdSnPf5YRu535sDsB7H1-cFPB5FeN4DM9-EdHkK_po");'></div>
+                <div class="flex flex-col gap-4">
+                    <h1 class="text-white text-5xl font-black leading-tight tracking-tight">Kho Tri Thức</h1>
+                    <p class="text-white/80 text-lg font-normal leading-relaxed max-w-md">Hệ thống quản lý tri thức và cơ sở tri thức cá nhân AI. Khám phá và phát triển tiềm năng của bạn thông qua sức mạnh của dữ liệu.</p>
+                </div>
+                <div class="flex items-center gap-4 text-white/60">
+                    <span class="material-symbols-outlined">auto_awesome</span>
+                    <span class="text-sm font-medium">Tích hợp AI tiên tiến cho ghi chú và tra cứu</span>
+                </div>
+            </div>
+            <div class="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 translate-y-1/2 blur-3xl"></div>
+            <div class="absolute top-0 right-0 w-96 h-96 bg-black/10 rounded-full translate-x-1/3 -translate-y-1/3 blur-3xl"></div>
+        </div>
+        <!-- Right Side: Login Form -->
+        <div class="w-full lg:w-1/2 flex flex-col justify-center items-center px-8 md:px-16 bg-background-light dark:bg-background-dark">
+            <div class="w-full max-w-[440px] flex flex-col gap-8">
+                <div class="flex flex-col gap-2">
+                    <div class="lg:hidden flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 bg-primary rounded flex items-center justify-center">
+                            <span class="material-symbols-outlined text-white text-xl">database</span>
+                        </div>
+                        <span class="font-bold text-xl text-slate-900 dark:text-white">Kho Tri Thức</span>
+                    </div>
+                    <h2 class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">Đăng nhập</h2>
+                    <p class="text-slate-600 dark:text-slate-400">Chào mừng bạn quay trở lại với hệ thống tri thức.</p>
+                </div>
+                <form id="login-form" class="flex flex-col gap-1">
+                    <div class="flex flex-col gap-2 py-2">
+                        <label class="flex flex-col flex-1">
+                            <p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-2">Email</p>
+                            <input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 text-base font-normal leading-normal" placeholder="Nhập email của bạn" type="email" required/>
+                        </label>
+                    </div>
+                    <div class="flex flex-col gap-2 py-2">
+                        <label class="flex flex-col flex-1">
+                            <p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-2">Mật khẩu</p>
+                            <div class="flex w-full flex-1 items-stretch rounded-lg">
+                                <input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 rounded-r-none border-r-0 text-base font-normal leading-normal" placeholder="Nhập mật khẩu" type="password" required/>
+                                <div class="text-slate-400 dark:text-[#9da6b9] flex border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] items-center justify-center px-4 rounded-r-lg border-l-0 cursor-pointer hover:text-primary transition-colors">
+                                    <span class="material-symbols-outlined">visibility</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between py-2">
+                        <label class="flex items-center gap-x-3 cursor-pointer">
+                            <input class="h-5 w-5 rounded border-slate-300 dark:border-[#3b4354] border-2 bg-transparent text-primary checked:bg-primary checked:border-primary focus:ring-0 focus:ring-offset-0 focus:outline-none transition-all" type="checkbox"/>
+                            <p class="text-slate-700 dark:text-white text-sm font-normal">Ghi nhớ đăng nhập</p>
+                        </label>
+                        <a class="text-primary text-sm font-medium hover:underline" href="#">Quên mật khẩu?</a>
+                    </div>
+                    <button class="mt-4 flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-wide hover:bg-primary/90 transition-all shadow-lg shadow-primary/20" type="submit">
+                        <span class="truncate">Đăng nhập</span>
+                    </button>
+                </form>
+                <div class="relative flex items-center py-4">
+                    <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                    <span class="flex-shrink mx-4 text-slate-400 text-xs uppercase tracking-widest">Hoặc tiếp tục với</span>
+                    <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                </div>
+                <div class="flex gap-4">
+                    <button class="flex-1 flex items-center justify-center gap-2 h-12 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <span class="material-symbols-outlined text-red-500">google</span>
+                        <span class="text-sm font-medium text-slate-700 dark:text-white">Google</span>
+                    </button>
+                    <button class="flex-1 flex items-center justify-center gap-2 h-12 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <span class="material-symbols-outlined text-blue-600">social_leaderboard</span>
+                        <span class="text-sm font-medium text-slate-700 dark:text-white">Facebook</span>
+                    </button>
+                </div>
+                <p class="text-center text-slate-600 dark:text-slate-400 text-sm mt-4">
+                    Chưa có tài khoản?
+                    <a class="text-primary font-bold hover:underline ml-1" href="register.html">Đăng ký ngay</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    <script>
+        if (localStorage.getItem('token')) {
+            window.location.href = '/dashboard.html';
+        }
+    </script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

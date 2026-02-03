@@ -1,0 +1,7 @@
+<script>
+    if (!localStorage.getItem('token')) {
+        window.location.href = '/login.html';
+    } else {
+        window.location.href = '/dashboard.html';
+    }
+</script>
