@@ -5,18 +5,27 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 const db = process.env.NODE_ENV === 'test' ? require('./db_sqlite') : require('./db');
 require('dotenv').config();
 const ai = require('./ai');
+const ingestion = require('./ingestion');
 
 const app = express();
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        const userId = req.user ? req.user.id : 'anonymous';
+        const userDir = path.join('uploads', userId.toString());
+        if (!fs.existsSync(userDir)) {
+            fs.mkdirSync(userDir, { recursive: true });
+        }
+        cb(null, userDir);
     },
     filename: (req, file, cb) => {
-        cb(null, Date.now() + '-' + file.originalname);
+        const ext = path.extname(file.originalname);
+        // Use UUID to prevent path traversal and filename collisions
+        cb(null, `${uuidv4()}${ext}`);
     }
 });
 const upload = multer({
@@ -102,6 +111,38 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+app.patch('/api/profile', authenticateToken, async (req, res) => {
+    const { full_name, avatar } = req.body;
+    try {
+        const updates = [];
+        const params = [];
+        if (full_name) { updates.push(`full_name = $${updates.length+1}`); params.push(full_name); }
+        if (avatar) { updates.push(`avatar = $${updates.length+1}`); params.push(avatar); }
+        if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
+        params.push(req.user.id);
+        await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${params.length}`, params);
+        res.json({ message: 'Profile updated' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/change-password', authenticateToken, async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    if (!newPassword || newPassword.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    try {
+        const result = await db.query('SELECT password FROM users WHERE id = $1', [req.user.id]);
+        const user = result.rows[0];
+        const valid = await bcrypt.compare(oldPassword, user.password);
+        if (!valid) return res.status(400).json({ error: 'Invalid old password' });
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashed, req.user.id]);
+        res.json({ message: 'Password changed' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- Category Routes ---
 
 app.get('/api/categories', authenticateToken, async (req, res) => {
@@ -157,11 +198,27 @@ app.post('/api/sources', authenticateToken, upload.single('file'), async (req, r
     let { name, type, content, url, category_id } = req.body;
     const filePath = req.file ? req.file.path : null;
 
-    if (!content && filePath) {
-        content = `Nội dung được trích xuất từ tệp ${name}. Đây là một tài liệu quan trọng trong kho tri thức của bạn.`;
+    if (req.file && !name) {
+        name = req.file.originalname;
+    }
+
+    if (filePath) {
+        const extracted = await ingestion.extractText(filePath, req.file.mimetype);
+        if (extracted) {
+            content = extracted;
+        }
+    }
+
+    if (!content && !url) {
+        content = "Empty source";
     }
 
     try {
+        if (category_id) {
+            const catCheck = await db.query('SELECT id FROM categories WHERE id = $1 AND user_id = $2', [category_id, req.user.id]);
+            if (catCheck.rows.length === 0) return res.status(403).json({ error: 'Unauthorized category' });
+        }
+
         const result = await db.query(
             'INSERT INTO sources (user_id, category_id, name, type, content, url, file_path) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
             [req.user.id, category_id || null, name, type, content, url, filePath]
@@ -175,6 +232,11 @@ app.post('/api/sources', authenticateToken, upload.single('file'), async (req, r
 app.patch('/api/sources/:id', authenticateToken, async (req, res) => {
     const { name, scheduled_delete_at, category_id } = req.body;
     try {
+        if (category_id) {
+            const catCheck = await db.query('SELECT id FROM categories WHERE id = $1 AND user_id = $2', [category_id, req.user.id]);
+            if (catCheck.rows.length === 0) return res.status(403).json({ error: 'Unauthorized category' });
+        }
+
         const updates = [];
         const params = [];
         if (name) { updates.push(`name = $${updates.length + 1}`); params.push(name); }
@@ -209,6 +271,16 @@ app.get('/api/notebooks', authenticateToken, async (req, res) => {
     try {
         const result = await db.query('SELECT * FROM notebooks WHERE user_id = $1 AND is_deleted = 0 ORDER BY created_at DESC', [req.user.id]);
         res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/notebooks/:id', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM notebooks WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Notebook not found' });
+        res.json(result.rows[0]);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -301,6 +373,120 @@ app.patch('/api/notebooks/:id/sources/:sourceId', authenticateToken, async (req,
     }
 });
 
+// --- Notes Routes ---
+
+app.get('/api/notebooks/:id/notes', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM notes WHERE notebook_id = $1 AND user_id = $2 AND is_deleted = 0', [req.params.id, req.user.id]);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/notes', authenticateToken, async (req, res) => {
+    const { notebook_id, title, content } = req.body;
+    try {
+        const nbCheck = await db.query('SELECT id FROM notebooks WHERE id = $1 AND user_id = $2', [notebook_id, req.user.id]);
+        if (nbCheck.rows.length === 0) return res.status(403).json({ error: 'Unauthorized notebook' });
+
+        const result = await db.query(
+            'INSERT INTO notes (notebook_id, user_id, title, content) VALUES ($1, $2, $3, $4) RETURNING *',
+            [notebook_id, req.user.id, title, content]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/notes/:id', authenticateToken, async (req, res) => {
+    const { title, content } = req.body;
+    try {
+        const result = await db.query('UPDATE notes SET title = $1, content = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4',
+            [title, content, req.params.id, req.user.id]);
+        res.json({ message: 'Note updated' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/notes/:id', authenticateToken, async (req, res) => {
+    try {
+        await db.query('UPDATE notes SET is_deleted = 1 WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        res.json({ message: 'Note moved to trash' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Notifications ---
+
+app.get('/api/notifications', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/notifications/:id/read', authenticateToken, async (req, res) => {
+    try {
+        await db.query('UPDATE notifications SET is_read = 1 WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        res.json({ message: 'Notification marked as read' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Sessions ---
+
+app.get('/api/sessions', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM sessions WHERE user_id = $1 ORDER BY last_active DESC', [req.user.id]);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/sessions/:id', authenticateToken, async (req, res) => {
+    try {
+        await db.query('DELETE FROM sessions WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        res.json({ message: 'Session terminated' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Flashcards ---
+
+app.get('/api/notebooks/:id/flashcards', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM flashcards WHERE notebook_id = $1 AND user_id = $2 ORDER BY created_at DESC', [req.params.id, req.user.id]);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/flashcards', authenticateToken, async (req, res) => {
+    const { notebook_id, question, answer } = req.body;
+    try {
+        const nbCheck = await db.query('SELECT id FROM notebooks WHERE id = $1 AND user_id = $2', [notebook_id, req.user.id]);
+        if (nbCheck.rows.length === 0) return res.status(403).json({ error: 'Unauthorized notebook' });
+
+        const result = await db.query(
+            'INSERT INTO flashcards (notebook_id, user_id, question, answer) VALUES ($1, $2, $3, $4) RETURNING *',
+            [notebook_id, req.user.id, question, answer]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- AI Logic ---
 
 app.post('/api/ai/fast-analysis', authenticateToken, async (req, res) => {
@@ -350,6 +536,33 @@ app.post('/api/ai/chat', authenticateToken, async (req, res) => {
 
         const resultAi = await ai.chatWithSources(message, sources);
         res.json(resultAi);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "AI Service error" });
+    }
+});
+
+app.post('/api/ai/generate-flashcards', authenticateToken, async (req, res) => {
+    const { notebookId } = req.body;
+    try {
+        const nbCheck = await db.query('SELECT id FROM notebooks WHERE id = $1 AND user_id = $2', [notebookId, req.user.id]);
+        if (nbCheck.rows.length === 0) return res.status(403).json({ error: 'Unauthorized notebook' });
+
+        const result = await db.query(
+            'SELECT s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id WHERE ns.notebook_id = $1 AND s.user_id = $2 AND s.is_deleted = 0 AND ns.is_active = 1',
+            [notebookId, req.user.id]
+        );
+        const sources = result.rows;
+        if (sources.length === 0) return res.status(400).json({ error: 'No active sources found' });
+
+        const cards = await ai.generateFlashcards(sources);
+
+        for (const card of cards) {
+            await db.query('INSERT INTO flashcards (notebook_id, user_id, question, answer) VALUES ($1, $2, $3, $4)',
+                [notebookId, req.user.id, card.q, card.a]);
+        }
+
+        res.json({ message: `Generated ${cards.length} flashcards`, cards });
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: "AI Service error" });
@@ -438,8 +651,38 @@ app.delete('/api/trash/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// --- Cleanup Task ---
+
+const cleanup = async () => {
+    try {
+        const trashItems = await db.query('SELECT * FROM trash WHERE expires_at < CURRENT_TIMESTAMP');
+        for (const item of trashItems.rows) {
+            if (item.item_type === 'source') {
+                const sourceRes = await db.query('SELECT file_path FROM sources WHERE id = $1', [item.item_id]);
+                const filePath = sourceRes.rows[0]?.file_path;
+                if (filePath) fs.unlink(path.resolve(filePath), (err) => {});
+                await db.query('DELETE FROM sources WHERE id = $1', [item.item_id]);
+            } else if (item.item_type === 'notebook') {
+                await db.query('DELETE FROM notebooks WHERE id = $1', [item.item_id]);
+            }
+            await db.query('DELETE FROM trash WHERE id = $1', [item.id]);
+        }
+
+        const scheduled = await db.query('SELECT * FROM sources WHERE scheduled_delete_at < CURRENT_TIMESTAMP AND is_deleted = 0');
+        for (const s of scheduled.rows) {
+            await db.query('UPDATE sources SET is_deleted = 1 WHERE id = $1', [s.id]);
+            await db.query('INSERT INTO trash (user_id, item_id, item_type, expires_at) VALUES ($1, $2, $3, $4)',
+                [s.user_id, s.id, 'source', new Date(Date.now() + 30*24*60*60*1000)]);
+        }
+    } catch (e) {
+        console.error("Cleanup error:", e);
+    }
+};
+setInterval(cleanup, 60 * 60 * 1000);
+
 // --- Start Server ---
 const PORT = process.env.PORT || 3000;
 db.initDb().then(() => {
+    cleanup(); // Run once on startup
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 });

@@ -105,8 +105,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('confirmQuickCreate').onclick = async () => {
         const name = document.getElementById('newNbName').value;
         const description = document.getElementById('newNbDesc').value;
+        const sourceIds = Array.from(selectedSources);
         if (name) {
-            const nb = await apiRequest('/notebooks', { method: 'POST', body: JSON.stringify({ name, description }) });
+            const nb = await apiRequest('/notebooks', { method: 'POST', body: JSON.stringify({ name, description, sourceIds }) });
             window.location.href = `notebook.html?id=${nb.id}`;
         }
     };

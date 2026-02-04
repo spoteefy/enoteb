@@ -25,25 +25,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!notebookId) return;
 
         try {
-            // In a real app, we'd fetch actual flashcards.
-            // For now, let's simulate generating them from notebook content.
-            notebookName.textContent = 'Loading...';
+            notebookName.textContent = 'Đang tải...';
             const res = await fetch(`/api/notebooks/${notebookId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const notebook = await res.json();
             notebookName.textContent = notebook.name;
 
-            // Simulated cards
-            flashcards = [
-                { q: 'Khái niệm về RAG là gì?', a: 'Retrieval-Augmented Generation: Kết hợp giữa truy xuất dữ liệu và mô hình ngôn ngữ.' },
-                { q: 'Lợi ích của việc dùng PostgreSQL cho vector search?', a: 'Khả năng mở rộng, tính nhất quán dữ liệu và hỗ trợ pgvector.' },
-                { q: 'NotebookLM khác gì so với Chatbot thông thường?', a: 'Tập trung vào cơ sở tri thức cá nhân dựa trên tài liệu người dùng tải lên.' }
-            ];
+            const cardsRes = await fetch(`/api/notebooks/${notebookId}/flashcards`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            flashcards = await cardsRes.json();
 
-            renderCard();
+            if (flashcards.length === 0) {
+                if (confirm('Notebook này chưa có flashcards. Bạn có muốn AI tạo thẻ học tập từ tài liệu không?')) {
+                    generateCards();
+                } else {
+                    renderCard();
+                }
+            } else {
+                renderCard();
+            }
         } catch (err) {
             console.error(err);
+        }
+    }
+
+    async function generateCards() {
+        cardText.textContent = 'Đang tạo thẻ bằng AI...';
+        try {
+            const res = await fetch('/api/ai/generate-flashcards', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notebookId })
+            });
+            const data = await res.json();
+            if (data.cards) {
+                flashcards = data.cards;
+                currentIndex = 0;
+                renderCard();
+            } else {
+                cardText.textContent = 'Không thể tạo thẻ. Hãy đảm bảo bạn đã thêm tài liệu vào notebook.';
+            }
+        } catch (err) {
+            console.error(err);
+            cardText.textContent = 'Lỗi khi tạo thẻ.';
         }
     }
 
@@ -54,7 +83,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const card = flashcards[currentIndex];
-        cardText.textContent = isFlipped ? card.a : card.q;
+        const q = card.question || card.q;
+        const a = card.answer || card.a;
+
+        cardText.textContent = isFlipped ? a : q;
         cardSideLabel.textContent = isFlipped ? 'Câu trả lời' : 'Câu hỏi';
 
         cardNumber.textContent = `Thẻ ${currentIndex + 1}/${flashcards.length}`;

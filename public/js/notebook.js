@@ -137,11 +137,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: formData
             });
             const source = await res.json();
-            await apiRequest('/notebooks', { // Using POST /notebooks with sourceIds to link?
-                // Actually I need a route to add source to EXISTING notebook
-                // Let's add it to server/app.js
-            });
-            // Simplified: re-POST to a new endpoint I'll add
             await apiRequest(`/notebooks/${notebookId}/link-source`, {
                 method: 'POST',
                 body: JSON.stringify({ sourceId: source.id })

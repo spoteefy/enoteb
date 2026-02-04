@@ -1,6 +1,7 @@
 const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
 const { Annotation, StateGraph, START, END } = require("@langchain/langgraph");
 const { HumanMessage, SystemMessage, AIMessage } = require("@langchain/core/messages");
+const rag = require('./rag');
 
 const googleApiKey = process.env.GOOGLE_API_KEY;
 
@@ -33,15 +34,17 @@ async function chatWithSources(message, sources) {
         };
     }
 
-    const context = sources.map(s => `[${s.name}]: ${truncateContent(s.content)}`).join("\n\n");
-    const systemPrompt = `Bạn là Trợ lý AI của Kho Tri Thức. Bạn có quyền truy cập vào các tài liệu sau đây để trả lời câu hỏi của người dùng.
+    try {
+        const vectorStore = await rag.createVectorStore(sources);
+        const { context, citations } = await rag.getRelevantContext(vectorStore, message);
+
+        const systemPrompt = `Bạn là Trợ lý AI của Kho Tri Thức. Bạn có quyền truy cập vào các tài liệu sau đây để trả lời câu hỏi của người dùng.
 Hãy trả lời một cách chuyên nghiệp, chính xác dựa TRÊN DỮ LIỆU ĐƯỢC CUNG CẤP.
 Nếu thông tin không có trong tài liệu, hãy nói rõ là bạn không biết.
 
 DỮ LIỆU NGUỒN:
 ${context}`;
 
-    try {
         const response = await model.invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(message)
@@ -49,7 +52,7 @@ ${context}`;
 
         return {
             response: response.content,
-            citations: sources.slice(0, 3).map(s => s.name) // Simplified citations
+            citations: citations
         };
     } catch (error) {
         console.error("AI Chat Error:", error);
@@ -131,5 +134,23 @@ async function fastAnalysis(sources) {
 
 module.exports = {
     chatWithSources,
-    fastAnalysis
+    fastAnalysis,
+    generateFlashcards: async (sources) => {
+        if (!model) return [];
+        const context = sources.map(s => `[${s.name}]: ${truncateContent(s.content, 5000)}`).join("\n\n");
+        const prompt = `Dựa trên các tài liệu sau, hãy tạo 5 thẻ ghi nhớ (flashcards) để giúp học tập.
+Mỗi thẻ gồm một câu hỏi và một câu trả lời súc tích.
+Trả về dưới dạng JSON array: [{"q": "Câu hỏi", "a": "Câu trả lời"}, ...]
+
+TÀI LIỆU:
+${context}`;
+        try {
+            const response = await model.invoke(prompt);
+            const jsonStr = response.content.replace(/```json/g, "").replace(/```/g, "").trim();
+            return JSON.parse(jsonStr);
+        } catch (e) {
+            console.error("Flashcard Gen Error:", e);
+            return [];
+        }
+    }
 };
