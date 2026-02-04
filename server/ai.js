@@ -14,6 +14,15 @@ if (googleApiKey) {
 }
 
 /**
+ * Helper to truncate source content to stay within reasonable token limits
+ */
+function truncateContent(content, maxChars = 10000) {
+    if (!content) return "";
+    if (content.length <= maxChars) return content;
+    return content.substring(0, maxChars) + "... [Nội dung bị cắt do quá dài]";
+}
+
+/**
  * Single document or context-based chat
  */
 async function chatWithSources(message, sources) {
@@ -24,7 +33,7 @@ async function chatWithSources(message, sources) {
         };
     }
 
-    const context = sources.map(s => `[${s.name}]: ${s.content}`).join("\n\n");
+    const context = sources.map(s => `[${s.name}]: ${truncateContent(s.content)}`).join("\n\n");
     const systemPrompt = `Bạn là Trợ lý AI của Kho Tri Thức. Bạn có quyền truy cập vào các tài liệu sau đây để trả lời câu hỏi của người dùng.
 Hãy trả lời một cách chuyên nghiệp, chính xác dựa TRÊN DỮ LIỆU ĐƯỢC CUNG CẤP.
 Nếu thông tin không có trong tài liệu, hãy nói rõ là bạn không biết.
@@ -59,7 +68,7 @@ const AnalysisState = Annotation.Root({
 
 async function summarizeNode(state) {
     const { sources } = state;
-    const context = sources.map(s => `[${s.name}]: ${s.content}`).join("\n\n");
+    const context = sources.map(s => `[${s.name}]: ${truncateContent(s.content)}`).join("\n\n");
 
     const prompt = `Hãy tóm tắt nội dung của ${sources.length} tài liệu sau đây một cách súc tích. Tập trung vào các điểm mấu chốt và giá trị cốt lõi.
 
@@ -72,7 +81,7 @@ ${context}`;
 
 async function extractTopicsNode(state) {
     const { sources } = state;
-    const context = sources.map(s => `[${s.name}]: ${s.content}`).join("\n\n");
+    const context = sources.map(s => `[${s.name}]: ${truncateContent(s.content)}`).join("\n\n");
 
     const prompt = `Từ các tài liệu sau, hãy trích xuất 2-3 chủ đề quan trọng nhất.
 Trả về dưới dạng JSON array: [{"title": "Chủ đề 1", "description": "Mô tả ngắn"}, ...]

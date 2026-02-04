@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const db = process.env.NODE_ENV === 'test' ? require('./db_sqlite') : require('./db');
 require('dotenv').config();
 const ai = require('./ai');
@@ -18,16 +19,29 @@ const storage = multer.diskStorage({
         cb(null, Date.now() + '-' + file.originalname);
     }
 });
-const upload = multer({ storage: storage });
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/markdown', 'text/plain'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only PDF, DOCX, MD, and TXT are allowed.'));
+        }
+    }
+});
 app.use(cors());
 app.use(express.json());
-app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
-    next();
-});
+// Sensitive request logging removed for production safety
 app.use(express.static('public'));
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+    console.error("FATAL: JWT_SECRET environment variable is required in production.");
+    process.exit(1);
+}
+const ACTUAL_JWT_SECRET = JWT_SECRET || 'dev-secret-key-only';
 
 // Middleware to verify JWT
 const authenticateToken = (req, res, next) => {
@@ -36,7 +50,7 @@ const authenticateToken = (req, res, next) => {
 
     if (!token) return res.sendStatus(401);
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
+    jwt.verify(token, ACTUAL_JWT_SECRET, (err, user) => {
         if (err) return res.sendStatus(403);
         req.user = user;
         next();
@@ -47,6 +61,10 @@ const authenticateToken = (req, res, next) => {
 
 app.post('/api/register', async (req, res) => {
     const { email, password, full_name } = req.body;
+    if (!email || !email.includes('@')) return res.status(400).json({ error: 'Invalid email format' });
+    if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    if (!full_name) return res.status(400).json({ error: 'Full name is required' });
+
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const result = await db.query(
@@ -69,13 +87,15 @@ app.post('/api/register', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+
     try {
         const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
         const user = result.rows[0];
         if (!user) return res.status(400).json({ error: 'User not found' });
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
-        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jwt.sign({ id: user.id, email: user.email }, ACTUAL_JWT_SECRET, { expiresIn: '24h' });
         res.json({ token, user: { id: user.id, email: user.email, full_name: user.full_name, avatar: user.avatar } });
     } catch (e) {
         res.status(500).json({ error: 'Server error' });
@@ -173,6 +193,7 @@ app.patch('/api/sources/:id', authenticateToken, async (req, res) => {
 
 app.delete('/api/sources/:id', authenticateToken, async (req, res) => {
     try {
+        // Move to trash: keep file but mark as deleted
         await db.query('UPDATE sources SET is_deleted = 1 WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
         await db.query('INSERT INTO trash (user_id, item_id, item_type, expires_at) VALUES ($1, $2, $3, $4)',
             [req.user.id, req.params.id, 'source', new Date(Date.now() + 30*24*60*60*1000)]);
@@ -199,6 +220,20 @@ app.post('/api/notebooks', authenticateToken, async (req, res) => {
         const client = await db.pool.connect();
         try {
             await client.query('BEGIN');
+
+            // Verify all sourceIds belong to the user
+            if (sourceIds && sourceIds.length > 0) {
+                const placeholders = sourceIds.map((_, i) => `$${i + 1}`).join(',');
+                const checkRes = await client.query(
+                    `SELECT id FROM sources WHERE id IN (${placeholders}) AND user_id = $${sourceIds.length + 1}`,
+                    [...sourceIds, req.user.id]
+                );
+                if (checkRes.rows.length !== sourceIds.length) {
+                    await client.query('ROLLBACK');
+                    return res.status(403).json({ error: 'Unauthorized source selection' });
+                }
+            }
+
             const result = await client.query(
                 'INSERT INTO notebooks (user_id, name, description, icon, color) VALUES ($1, $2, $3, $4, $5) RETURNING *',
                 [req.user.id, name, description, icon, color]
@@ -238,6 +273,13 @@ app.get('/api/notebooks/:id/sources', authenticateToken, async (req, res) => {
 app.post('/api/notebooks/:id/link-source', authenticateToken, async (req, res) => {
     const { sourceId } = req.body;
     try {
+        // Ownership check for both notebook and source
+        const check = await db.query(
+            'SELECT n.id FROM notebooks n CROSS JOIN sources s WHERE n.id = $1 AND s.id = $2 AND n.user_id = $3 AND s.user_id = $3',
+            [req.params.id, sourceId, req.user.id]
+        );
+        if (check.rows.length === 0) return res.status(403).json({ error: 'Unauthorized access' });
+
         await db.query('INSERT INTO notebook_sources (notebook_id, source_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [req.params.id, sourceId]);
         res.json({ message: 'Source linked to notebook' });
     } catch (e) {
@@ -248,6 +290,10 @@ app.post('/api/notebooks/:id/link-source', authenticateToken, async (req, res) =
 app.patch('/api/notebooks/:id/sources/:sourceId', authenticateToken, async (req, res) => {
     const { is_active } = req.body;
     try {
+        // Ownership check
+        const check = await db.query('SELECT id FROM notebooks WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        if (check.rows.length === 0) return res.status(403).json({ error: 'Unauthorized access' });
+
         await db.query('UPDATE notebook_sources SET is_active = $1 WHERE notebook_id = $2 AND source_id = $3', [is_active ? 1 : 0, req.params.id, req.params.sourceId]);
         res.json({ message: 'Source status updated' });
     } catch (e) {
@@ -260,20 +306,26 @@ app.patch('/api/notebooks/:id/sources/:sourceId', authenticateToken, async (req,
 app.post('/api/ai/fast-analysis', authenticateToken, async (req, res) => {
     const { notebookId, sourceIds } = req.body;
     try {
+        // Ownership check for notebook
+        if (notebookId) {
+            const nbCheck = await db.query('SELECT id FROM notebooks WHERE id = $1 AND user_id = $2', [notebookId, req.user.id]);
+            if (nbCheck.rows.length === 0) return res.status(403).json({ error: 'Unauthorized access to notebook' });
+        }
+
         let sources = [];
         if (sourceIds && sourceIds.length > 0) {
             const placeholders = sourceIds.map((_, i) => `$${i + 1}`).join(',');
-            const result = await db.query(`SELECT name, content FROM sources WHERE id IN (${placeholders}) AND user_id = $${sourceIds.length + 1}`, [...sourceIds, req.user.id]);
+            const result = await db.query(`SELECT name, content FROM sources WHERE id IN (${placeholders}) AND user_id = $${sourceIds.length + 1} AND is_deleted = 0`, [...sourceIds, req.user.id]);
             sources = result.rows;
-        } else {
+        } else if (notebookId) {
             const result = await db.query(
-                'SELECT s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id WHERE ns.notebook_id = $1 AND ns.is_active = 1',
-                [notebookId]
+                'SELECT s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id JOIN notebooks n ON n.id = ns.notebook_id WHERE ns.notebook_id = $1 AND n.user_id = $2 AND s.is_deleted = 0 AND ns.is_active = 1',
+                [notebookId, req.user.id]
             );
             sources = result.rows;
         }
 
-        if (sources.length === 0) return res.status(400).json({ error: 'No sources selected' });
+        if (sources.length === 0) return res.status(400).json({ error: 'No sources selected or unauthorized access' });
 
         const result = await ai.fastAnalysis(sources);
         res.json(result);
@@ -286,9 +338,13 @@ app.post('/api/ai/fast-analysis', authenticateToken, async (req, res) => {
 app.post('/api/ai/chat', authenticateToken, async (req, res) => {
     const { message, notebookId } = req.body;
     try {
+        // Ownership check for notebook
+        const nbCheck = await db.query('SELECT id FROM notebooks WHERE id = $1 AND user_id = $2', [notebookId, req.user.id]);
+        if (nbCheck.rows.length === 0) return res.status(403).json({ error: 'Unauthorized access to notebook' });
+
         const result = await db.query(
-            'SELECT s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id WHERE ns.notebook_id = $1 AND ns.is_active = 1',
-            [notebookId]
+            'SELECT s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id JOIN notebooks n ON n.id = ns.notebook_id WHERE ns.notebook_id = $1 AND n.user_id = $2 AND s.is_deleted = 0 AND ns.is_active = 1',
+            [notebookId, req.user.id]
         );
         const sources = result.rows;
 
@@ -297,6 +353,88 @@ app.post('/api/ai/chat', authenticateToken, async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: "AI Service error" });
+    }
+});
+
+// --- Trash Management ---
+
+app.get('/api/trash', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM trash WHERE user_id = $1 ORDER BY deleted_at DESC', [req.user.id]);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/trash/:id/restore', authenticateToken, async (req, res) => {
+    try {
+        const client = await db.pool.connect();
+        try {
+            await client.query('BEGIN');
+            const trashRes = await client.query('SELECT * FROM trash WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+            const item = trashRes.rows[0];
+            if (!item) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'Trash item not found' });
+            }
+
+            if (item.item_type === 'source') {
+                await client.query('UPDATE sources SET is_deleted = 0 WHERE id = $1', [item.item_id]);
+            } else if (item.item_type === 'notebook') {
+                await client.query('UPDATE notebooks SET is_deleted = 0 WHERE id = $1', [item.item_id]);
+            }
+
+            await client.query('DELETE FROM trash WHERE id = $1', [req.params.id]);
+            await client.query('COMMIT');
+            res.json({ message: 'Item restored' });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/trash/:id', authenticateToken, async (req, res) => {
+    try {
+        const client = await db.pool.connect();
+        try {
+            await client.query('BEGIN');
+            const trashRes = await client.query('SELECT * FROM trash WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+            const item = trashRes.rows[0];
+            if (!item) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'Trash item not found' });
+            }
+
+            if (item.item_type === 'source') {
+                const sourceRes = await client.query('SELECT file_path FROM sources WHERE id = $1', [item.item_id]);
+                const filePath = sourceRes.rows[0]?.file_path;
+                if (filePath) {
+                    fs.unlink(path.resolve(filePath), (err) => {
+                        if (err) console.error("Failed to delete file:", filePath, err);
+                    });
+                }
+                await client.query('DELETE FROM sources WHERE id = $1', [item.item_id]);
+            } else if (item.item_type === 'notebook') {
+                await client.query('DELETE FROM notebooks WHERE id = $1', [item.item_id]);
+            }
+
+            await client.query('DELETE FROM trash WHERE id = $1', [req.params.id]);
+            await client.query('COMMIT');
+            res.json({ message: 'Item deleted permanently' });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
