@@ -6,6 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const db = process.env.NODE_ENV === 'test' ? require('./db_sqlite') : require('./db');
 require('dotenv').config();
+const ai = require('./ai');
 
 const app = express();
 
@@ -260,8 +261,9 @@ app.post('/api/ai/fast-analysis', authenticateToken, async (req, res) => {
     const { notebookId, sourceIds } = req.body;
     try {
         let sources = [];
-        if (sourceIds) {
-            const result = await db.query('SELECT name, content FROM sources WHERE id = ANY($1::int[]) AND user_id = $2', [sourceIds, req.user.id]);
+        if (sourceIds && sourceIds.length > 0) {
+            const placeholders = sourceIds.map((_, i) => `$${i + 1}`).join(',');
+            const result = await db.query(`SELECT name, content FROM sources WHERE id IN (${placeholders}) AND user_id = $${sourceIds.length + 1}`, [...sourceIds, req.user.id]);
             sources = result.rows;
         } else {
             const result = await db.query(
@@ -273,17 +275,11 @@ app.post('/api/ai/fast-analysis', authenticateToken, async (req, res) => {
 
         if (sources.length === 0) return res.status(400).json({ error: 'No sources selected' });
 
-        const summary = `AI đã phân tích ${sources.length} tài liệu của bạn. Các điểm mấu chốt được xác định là: 1) Tích hợp đa phương thức (multimodal) sẽ là xu hướng dẫn đầu trong năm 2025. 2) Việc tối ưu hóa mô hình 4-bit giúp giảm chi phí hạ tầng đáng kể mà không làm giảm độ chính xác. 3) Bảo mật dữ liệu y tế cần tuân thủ nghiêm ngặt các quy định HIPAA.`;
-
-        res.json({
-            summary,
-            topics: [
-                { title: "Tối ưu hóa LLM", description: "Sử dụng các kỹ thuật quantization để triển khai hiệu quả." },
-                { title: "Xu hướng Multimodal", description: "Kết hợp hình ảnh và văn bản trong phân tích tri thức." }
-            ]
-        });
+        const result = await ai.fastAnalysis(sources);
+        res.json(result);
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error(e);
+        res.status(500).json({ error: "AI Service error" });
     }
 });
 
@@ -296,19 +292,11 @@ app.post('/api/ai/chat', authenticateToken, async (req, res) => {
         );
         const sources = result.rows;
 
-        let response = `Tôi là Trợ lý AI của Kho Tri Thức. Dựa trên các tài liệu bạn đã chọn, tôi thấy rằng bạn đang quan tâm đến "${message}". `;
-        if (sources.length > 0) {
-            response += `Trong tài liệu "${sources[0].name}", có đề cập đến các vấn đề liên quan đến việc xây dựng hệ thống tri thức thông minh và áp dụng các mô hình ngôn ngữ lớn để tự động hóa quy trình.`;
-        } else {
-            response += "Vui lòng chọn hoặc tải lên ít nhất một tài liệu nguồn để tôi có thể cung cấp câu trả lời chính xác hơn dựa trên dữ liệu của bạn.";
-        }
-
-        res.json({
-            response,
-            citations: sources.slice(0, 2).map(s => s.name)
-        });
+        const resultAi = await ai.chatWithSources(message, sources);
+        res.json(resultAi);
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error(e);
+        res.status(500).json({ error: "AI Service error" });
     }
 });
 

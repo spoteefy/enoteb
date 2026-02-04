@@ -19,6 +19,11 @@
   },
   "homepage": "https://github.com/spoteefy/enoteb#readme",
   "dependencies": {
+    "@langchain/community": "^1.1.11",
+    "@langchain/core": "^1.1.19",
+    "@langchain/google-genai": "^2.1.15",
+    "@langchain/langgraph": "^1.1.3",
+    "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",

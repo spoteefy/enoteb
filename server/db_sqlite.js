@@ -68,7 +68,12 @@ const initDb = async () => {
                 is_deleted INTEGER DEFAULT 0,
                 scheduled_delete_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )`);
+            )`, (err) => {
+                // If column category_id missing because table already existed, add it
+                if (!err) {
+                    db.run("ALTER TABLE sources ADD COLUMN category_id INTEGER", (e) => {});
+                }
+            });
             db.run(`CREATE TABLE IF NOT EXISTS notebook_sources (
                 notebook_id INTEGER,
                 source_id INTEGER,
