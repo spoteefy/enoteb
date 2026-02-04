@@ -1,124 +1,188 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('token');
-    const urlParams = new URLSearchParams(window.location.search);
-    const notebookId = urlParams.get('id');
-
-    if (!token || !notebookId) {
-        window.location.href = '/dashboard.html';
+// Notebook Workspace Logic
+document.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+    const notebookId = params.get('id');
+    if (!notebookId) {
+        window.location.href = 'dashboard.html';
         return;
     }
 
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (user) {
-        document.querySelectorAll('.user-name').forEach(el => el.textContent = user.full_name);
+    const nbName = document.getElementById('nbName');
+    const nbDesc = document.getElementById('nbDesc');
+    const sourcesCount = document.getElementById('sourcesCount');
+    const notesCount = document.getElementById('notesCount');
+    const libraryList = document.getElementById('libraryList');
+    const chatHistory = document.getElementById('chatHistory');
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChatBtn');
+    const breadcrumbCurrent = document.getElementById('breadcrumbCurrent');
+    const contentTitle = document.getElementById('contentTitle');
+    const contentText = document.getElementById('contentText');
+    const saveNoteBtn = document.getElementById('saveNoteBtn');
+    const emptyState = document.getElementById('emptyState');
+    const contentView = document.getElementById('contentView');
+    const quickAnalyzeBtn = document.getElementById('quickAnalyzeBtn');
+
+    let currentSources = [];
+    let currentNotes = [];
+    let activeItem = null;
+
+    async function loadNotebook() {
+        const nb = await apiRequest(`/notebooks/${notebookId}`);
+        nbName.textContent = nb.name;
+        nbDesc.textContent = nb.description || 'Project Workspace';
+        await loadSources();
+        await loadNotes();
+        if (currentSources.length === 0 && currentNotes.length === 0) showEmptyState();
+        else showContentView();
     }
 
-    fetchNotebookDetails(notebookId);
-    fetchSources(notebookId);
-    fetchNotes(notebookId);
-
-    // --- AI Chat Logic ---
-    const chatInput = document.querySelector('#chat-input');
-    const chatSendBtn = document.querySelector('#chat-send-btn');
-    const chatContainer = document.querySelector('#chat-container');
-
-    if (chatInput && chatSendBtn) {
-        chatSendBtn.onclick = async () => {
-            const message = chatInput.value;
-            if (!message) return;
-
-            appendChatMessage('You', message);
-            chatInput.value = '';
-
-            const res = await fetch('/api/ai/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ message, notebookId })
-            });
-            const data = await res.json();
-            appendChatMessage('AI Assistant', data.response);
-        };
+    async function loadSources() {
+        currentSources = await apiRequest(`/notebooks/${notebookId}/sources`);
+        sourcesCount.textContent = currentSources.length;
+        renderLibrary();
     }
 
-    function appendChatMessage(role, text) {
-        const div = document.createElement('div');
-        div.className = role === 'You' ? 'flex flex-col gap-2 items-end' : 'flex flex-col gap-2 max-w-[90%]';
-        div.innerHTML = `
-            <div class="p-4 rounded-2xl ${role === 'You' ? 'rounded-tr-none bg-primary text-white' : 'rounded-tl-none bg-gray-100 dark:bg-[#1a212f] text-gray-800 dark:text-gray-200'} text-sm leading-relaxed shadow-lg">
-                ${text}
-            </div>
-            <span class="text-[10px] text-[#9da6b9] ${role === 'You' ? 'mr-1' : 'ml-1'} font-medium">${role} • Just now</span>
-        `;
-        chatContainer.appendChild(div);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+    async function loadNotes() {
+        currentNotes = await apiRequest(`/notebooks/${notebookId}/notes`);
+        notesCount.textContent = currentNotes.length;
+        renderLibrary();
     }
 
-    // --- Source Upload ---
-    const uploadBtn = document.querySelector('#add-source-btn');
-    if (uploadBtn) {
-        uploadBtn.onclick = () => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.onchange = async () => {
-                const formData = new FormData();
-                formData.append('file', input.files[0]);
-                formData.append('name', input.files[0].name);
-                formData.append('type', 'pdf'); // Simplified
-
-                await fetch(`/api/notebooks/${notebookId}/sources`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData
+    function renderLibrary() {
+        libraryList.innerHTML = '';
+        currentSources.forEach(s => {
+            const item = document.createElement('div');
+            item.className = `flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer group ${activeItem?.id === s.id && activeItem?.type === 'source' ? 'bg-primary/10' : ''}`;
+            item.innerHTML = `
+                <input type="checkbox" class="source-active-check w-4 h-4 rounded border-slate-300 text-primary" ${s.is_active ? 'checked' : ''}>
+                <div class="text-red-500 flex items-center justify-center rounded-lg bg-red-500/10 shrink-0 size-8">
+                    <span class="material-symbols-outlined text-base">picture_as_pdf</span>
+                </div>
+                <p class="text-xs font-semibold truncate flex-1">${s.name}</p>
+            `;
+            item.querySelector('p').onclick = () => selectSource(s);
+            item.querySelector('.source-active-check').onchange = async (e) => {
+                await apiRequest(`/notebooks/${notebookId}/sources/${s.id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ is_active: e.target.checked })
                 });
-                fetchSources(notebookId);
             };
-            input.click();
-        };
+            libraryList.appendChild(item);
+        });
+
+        currentNotes.forEach(n => {
+            const item = document.createElement('div');
+            item.className = `flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer group ${activeItem?.id === n.id && activeItem?.type === 'note' ? 'bg-primary/10' : ''}`;
+            item.innerHTML = `
+                <div class="w-4 h-4"></div>
+                <div class="text-blue-500 flex items-center justify-center rounded-lg bg-blue-500/10 shrink-0 size-8">
+                    <span class="material-symbols-outlined text-base">edit_note</span>
+                </div>
+                <p class="text-xs font-semibold truncate flex-1">${n.title}</p>
+            `;
+            item.onclick = () => selectNote(n);
+            libraryList.appendChild(item);
+        });
     }
-});
 
-async function fetchNotebookDetails(id) {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`/api/notebooks/${id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const nb = await res.json();
-    document.querySelector('h2.text-gray-900.dark\\:text-white').textContent = nb.name;
-    document.querySelector('p.text-\\[\\#9da6b9\\]').textContent = nb.description || 'Kho tri thức của bạn';
-}
+    function selectSource(source) {
+        activeItem = { type: 'source', id: source.id };
+        breadcrumbCurrent.textContent = source.name;
+        contentTitle.textContent = source.name;
+        contentText.innerHTML = `<p>${source.content || 'No content.'}</p>`;
+        contentTitle.contentEditable = false;
+        contentText.contentEditable = false;
+        saveNoteBtn.classList.add('hidden');
+        renderLibrary();
+    }
 
-async function fetchSources(notebookId) {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`/api/notebooks/${notebookId}/sources`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const sources = await res.json();
-    const container = document.querySelector('.flex-1.overflow-y-auto.px-2 .flex.flex-col.gap-1');
-    const sourceCountEl = document.querySelector('.ml-auto.text-xs.bg-primary\\/20.px-2\\.5.py-0\\.5.rounded-full.font-bold');
-    if (sourceCountEl) sourceCountEl.textContent = sources.length;
+    function selectNote(note) {
+        activeItem = { type: 'note', id: note.id };
+        breadcrumbCurrent.textContent = note.title;
+        contentTitle.textContent = note.title;
+        contentText.innerHTML = note.content || '<p>Start writing...</p>';
+        contentTitle.contentEditable = true;
+        contentText.contentEditable = true;
+        saveNoteBtn.classList.remove('hidden');
+        renderLibrary();
+    }
 
-    if (!container) return;
-    container.innerHTML = '';
-    sources.forEach(s => {
-        const item = document.createElement('div');
-        item.className = "flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 cursor-pointer transition-all group";
-        item.onclick = () => window.location.href = `/preview.html?id=${s.id}&name=${encodeURIComponent(s.name)}`;
-        item.innerHTML = `
-            <div class="text-red-500 flex items-center justify-center rounded-lg bg-red-500/10 shrink-0 size-10 group-hover:scale-105 transition-transform">
-                <span class="material-symbols-outlined text-xl">picture_as_pdf</span>
+    function showEmptyState() { emptyState.classList.remove('hidden'); contentView.classList.add('hidden'); }
+    function showContentView() { emptyState.classList.add('hidden'); contentView.classList.remove('hidden'); }
+
+    saveNoteBtn.onclick = async () => {
+        if (activeItem?.type !== 'note') return;
+        await apiRequest(`/notes/${activeItem.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ title: contentTitle.textContent, content: contentText.innerHTML })
+        });
+        loadNotes();
+    };
+
+    document.getElementById('addSourceBtn').onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('name', file.name);
+            formData.append('type', 'pdf');
+            const token = localStorage.getItem('token');
+            // Upload to general edrive then link to this notebook
+            const res = await fetch('/api/sources', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            const source = await res.json();
+            await apiRequest('/notebooks', { // Using POST /notebooks with sourceIds to link?
+                // Actually I need a route to add source to EXISTING notebook
+                // Let's add it to server/app.js
+            });
+            // Simplified: re-POST to a new endpoint I'll add
+            await apiRequest(`/notebooks/${notebookId}/link-source`, {
+                method: 'POST',
+                body: JSON.stringify({ sourceId: source.id })
+            });
+            loadSources();
+        };
+        input.click();
+    };
+
+    quickAnalyzeBtn.onclick = async () => {
+        const data = await apiRequest('/ai/fast-analysis', {
+            method: 'POST',
+            body: JSON.stringify({ notebookId })
+        });
+        localStorage.setItem('lastAnalysis', JSON.stringify(data));
+        localStorage.setItem('lastAnalysisSources', JSON.stringify(currentSources.filter(s => s.is_active)));
+        window.location.href = 'analysis.html';
+    };
+
+    sendChatBtn.onclick = async () => {
+        const message = chatInput.value.trim();
+        if (!message) return;
+        addChatMessage('You', message, true);
+        chatInput.value = '';
+        const data = await apiRequest('/ai/chat', { method: 'POST', body: JSON.stringify({ message, notebookId }) });
+        addChatMessage('AI Assistant', data.response, false, data.citations);
+    };
+
+    function addChatMessage(sender, text, isUser, citations = []) {
+        const div = document.createElement('div');
+        div.className = `flex flex-col gap-2 ${isUser ? 'items-end' : 'max-w-[90%]'}`;
+        div.innerHTML = `
+            <div class="p-4 rounded-2xl ${isUser ? 'rounded-tr-none bg-primary text-white shadow-lg' : 'rounded-tl-none bg-gray-100 dark:bg-[#1a212f] text-gray-800 dark:text-gray-200 border border-white/5'} text-sm leading-relaxed">
+                ${text}
+                ${citations.length > 0 ? `<div class="mt-4 flex flex-wrap gap-2">${citations.map(c => `<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-lg border border-primary/20">${c}</span>`).join('')}</div>` : ''}
             </div>
-            <div class="flex flex-col justify-center overflow-hidden">
-                <p class="text-gray-900 dark:text-white text-sm font-semibold leading-tight truncate">${s.name}</p>
-                <p class="text-[#9da6b9] text-[10px] font-normal leading-tight mt-1">Recently updated</p>
-            </div>
+            <span class="text-[10px] text-[#9da6b9] font-medium">${sender} • Just now</span>
         `;
-        container.appendChild(item);
-    });
-}
+        chatHistory.appendChild(div);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
 
-async function fetchNotes(notebookId) {
-    // Similar logic for notes if needed, but for now focus on UI consistency
-}
+    loadNotebook();
+});

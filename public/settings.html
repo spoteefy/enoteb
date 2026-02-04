@@ -48,26 +48,30 @@
 <div class="flex min-h-screen">
 <aside class="w-72 sidebar-glass hidden lg:flex flex-col sticky top-0 h-screen">
 <div class="p-8">
-<div class="flex items-center gap-3 cursor-pointer" onclick="window.location.href='/dashboard.html'">
+<div class="flex items-center gap-3">
 <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
 <span class="material-symbols-outlined text-white">database</span>
 </div>
 <span class="font-bold text-xl tracking-tight">Kho Tri Thức</span>
 </div>
 </div>
-<nav class="flex-1 px-4 flex flex-col gap-1">
+<nav id="settingsNav" class="flex-1 px-4 flex flex-col gap-1">
 <p class="px-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Cài đặt hệ thống</p>
-<a id="nav-profile" class="flex items-center gap-3 px-4 py-3 rounded-lg nav-item-active transition-all cursor-pointer">
+<button data-tab="profile" class="flex items-center gap-3 px-4 py-3 rounded-lg nav-item-active transition-all w-full text-left">
 <span class="material-symbols-outlined">person</span>
 <span class="font-medium text-sm">Hồ sơ cá nhân</span>
-</a>
-<a id="nav-security" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
+</button>
+<button data-tab="security" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all w-full text-left">
 <span class="material-symbols-outlined">security</span>
-<span class="font-medium text-sm">Bảo mật & Thiết bị</span>
-</a>
+<span class="font-medium text-sm">Bảo mật</span>
+</button>
+<button data-tab="sessions" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all w-full text-left">
+<span class="material-symbols-outlined">devices</span>
+<span class="font-medium text-sm">Phiên đăng nhập</span>
+</button>
 <div class="mt-8">
 <p class="px-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Ứng dụng</p>
-<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all" href="/dashboard.html">
+<a href="dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all">
 <span class="material-symbols-outlined">dashboard</span>
 <span class="font-medium text-sm">Bảng điều khiển</span>
 </a>
@@ -75,110 +79,21 @@
 </nav>
 <div class="p-6 mt-auto border-t border-white/5">
 <div class="flex items-center gap-3 px-2">
+<img id="sideAvatar" alt="User avatar" class="w-10 h-10 rounded-full border border-white/10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6jK3c1wDbKeU-skDm16igSAh6yO0kygH5xkmo_4ccDHaF97grmVr-MMDX_4uuVvqu4loVXZ97QbsR-wHgij_RzssIGyI4D0gr5qNs2TjB-NKidCjr6rDBK0GfS6jMm_C7bDDbU9oHb9DMbF678ZABcnJSsWm4Ami0JHSvq_y0ryfokxqRSbwfd6EQx_cl97lh_N2-9CuEj2QTRK2CL55BG6OFmMPABGEVkc-xw55CBmwVYetzHnacN0DMzENbhBM8D3H4vl5bhGnC"/>
 <div class="flex flex-col">
-<span class="text-sm font-semibold truncate user-name">User</span>
-<span class="text-xs text-slate-500 truncate">Pro Member</span>
+<span id="sideName" class="text-sm font-semibold truncate">Nguyễn Văn A</span>
+<span id="sidePlan" class="text-xs text-slate-500 truncate">Pro Member</span>
 </div>
-<button onclick="logout()" class="ml-auto text-slate-500 hover:text-red-400">
+<button id="logoutBtn" class="ml-auto text-slate-500 hover:text-red-400">
 <span class="material-symbols-outlined text-lg">logout</span>
 </button>
 </div>
 </div>
 </aside>
-<main class="flex-1 overflow-y-auto">
-<div class="max-w-4xl mx-auto px-6 py-12 lg:px-12">
-<div id="profile-section">
-<header class="mb-10">
-<h1 class="text-3xl font-bold mb-2">Cài đặt Hồ sơ</h1>
-<p class="text-slate-400">Quản lý thông tin cá nhân và cách bạn xuất hiện trên Kho Tri Thức.</p>
-</header>
-<div class="space-y-8">
-<section class="bg-panel-dark/40 border border-white/5 rounded-2xl p-8">
-<h3 class="text-lg font-semibold mb-6">Thông tin cá nhân</h3>
-<form id="profile-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-<div class="md:col-span-2">
-<label class="block text-sm font-medium text-slate-400 mb-2">Họ và tên</label>
-<input id="full-name" class="w-full bg-background-dark border border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-white" type="text" value=""/>
-</div>
-<div class="md:col-span-2 pt-4 flex justify-end gap-3">
-<button class="px-8 py-2.5 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all" type="submit">Lưu thay đổi</button>
-</div>
-</form>
-</section>
-</div>
-</div>
-
-<div id="security-section" class="hidden">
-<header class="mb-10">
-<h1 class="text-3xl font-bold mb-2">Bảo mật & Thiết bị</h1>
-<p class="text-slate-400">Xem và quản lý các thiết bị hiện đang truy cập vào tài khoản của bạn.</p>
-</header>
-<div class="space-y-6">
-<section class="bg-panel-dark/40 border border-white/5 rounded-2xl p-8">
-    <h3 class="text-lg font-bold mb-4">Phiên hiện tại</h3>
-    <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-            <div class="p-3 bg-primary/10 rounded-xl text-primary">
-                <span class="material-symbols-outlined">desktop_windows</span>
-            </div>
-            <div>
-                <p class="font-bold">MacBook Pro (Thiết bị này)</p>
-                <p class="text-xs text-slate-500">Chrome • TP. Hồ Chí Minh, Việt Nam</p>
-            </div>
-        </div>
-        <span class="text-xs text-emerald-500 font-bold uppercase">Đang hoạt động</span>
-    </div>
-</section>
-</div>
-</div>
-</div>
+<main id="settingsContent" class="flex-1 overflow-y-auto">
+    <!-- Content injected based on active tab -->
 </main>
 </div>
-<script>
-    const user = JSON.parse(localStorage.getItem('user'));
 
-    document.querySelector('#nav-profile').onclick = () => {
-        document.querySelector('#profile-section').classList.remove('hidden');
-        document.querySelector('#security-section').classList.add('hidden');
-        document.querySelector('#nav-profile').classList.add('nav-item-active');
-        document.querySelector('#nav-security').classList.remove('nav-item-active');
-    };
-
-    document.querySelector('#nav-security').onclick = () => {
-        document.querySelector('#profile-section').classList.add('hidden');
-        document.querySelector('#security-section').classList.remove('hidden');
-        document.querySelector('#nav-profile').classList.remove('nav-item-active');
-        document.querySelector('#nav-security').classList.add('nav-item-active');
-    };
-
-    if (user) {
-        document.querySelectorAll('.user-name').forEach(el => el.textContent = user.full_name);
-        document.querySelector('#full-name').value = user.full_name;
-    }
-
-    document.querySelector('#profile-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const token = localStorage.getItem('token');
-        const full_name = document.querySelector('#full-name').value;
-        const res = await fetch('/api/settings/profile', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ full_name })
-        });
-        if (res.ok) {
-            user.full_name = full_name;
-            localStorage.setItem('user', JSON.stringify(user));
-            alert('Updated!');
-            location.reload();
-        }
-    });
-
-    function logout() {
-        localStorage.clear();
-        window.location.href = '/login.html';
-    }
-</script>
+<script src="js/settings.js"></script>
 </body></html>

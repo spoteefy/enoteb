@@ -26,39 +26,120 @@
             },
         }
     </script>
+<style type="text/tailwindcss">
+        @layer base {
+            .material-symbols-outlined {
+                font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+                display: inline-block;
+                vertical-align: middle;
+            }
+        }
+        .flashcard-inner {
+            perspective: 1000px;
+        }
+        .difficulty-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
 <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark flex items-center justify-between px-6 sticky top-0 z-50">
 <div class="flex items-center gap-4">
-<button onclick="window.location.href='/dashboard.html'" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+<button onclick="history.back()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
 <span class="material-symbols-outlined">arrow_back</span>
 </button>
-<h1 class="text-sm font-bold tracking-tight">Flashcards AI</h1>
+<div class="h-6 w-[1px] bg-slate-200 dark:border-slate-800"></div>
+<div class="flex flex-col">
+<h1 class="text-sm font-bold tracking-tight" id="notebookName">Kinh tế học Vĩ mô - Chương 4</h1>
+<p class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Chế độ Học tập AI</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+<span class="material-symbols-outlined text-orange-500 text-sm">local_fire_department</span>
+<span class="text-xs font-bold">12 ngày</span>
+</div>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
 </div>
 </header>
+<div class="flex flex-1 overflow-hidden">
+<aside class="w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-card-dark hidden lg:flex flex-col p-6 gap-8 overflow-y-auto">
+<section>
+<h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Tiến độ hôm nay</h3>
+<div class="flex items-center justify-between mb-2">
+<span class="text-sm font-medium">Hoàn thành</span>
+<span class="text-sm font-bold text-primary" id="progressText">0/0</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+<div id="progressBar" class="bg-primary h-full w-[0%] rounded-full"></div>
+</div>
+</section>
+<section class="bg-primary/5 border border-primary/10 rounded-xl p-4">
+<div class="flex items-center gap-3 mb-3">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<h3 class="text-sm font-bold">AI Insight</h3>
+</div>
+<p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                    AI đang phân tích kết quả học tập của bạn để tối ưu hóa lộ trình ôn tập.
+                </p>
+</section>
+<div class="mt-auto pt-6 border-t border-slate-200 dark:border-slate-800">
+<button class="w-full py-3 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium">
+<span class="material-symbols-outlined text-sm">auto_awesome</span>
+                    Tạo thẻ mới từ tài liệu
+                </button>
+</div>
+</aside>
 <main class="flex-1 flex flex-col items-center justify-center p-8 bg-background-light dark:bg-background-dark relative">
+<div class="absolute top-8 left-1/2 -translate-x-1/2 flex items-center gap-4 text-slate-500">
+<span class="text-xs font-bold uppercase tracking-widest" id="cardNumber">Thẻ 0/0</span>
+</div>
 <div class="w-full max-w-2xl aspect-[1.6/1] flex flex-col gap-8">
-<div id="flashcard" class="relative h-full bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl flex flex-col items-center justify-center p-12 text-center cursor-pointer">
-    <h2 id="card-text" class="text-2xl md:text-3xl font-bold leading-tight">Định luật Okun mô tả mối quan hệ giữa yếu tố nào?</h2>
-    <p id="card-instruction" class="mt-8 text-slate-500">Nhấn để xem câu trả lời</p>
+<div id="flashcard" class="relative w-full h-full group cursor-pointer">
+<div class="absolute inset-0 bg-primary/20 blur-2xl rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+<div class="relative h-full bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl flex flex-col items-center justify-center p-12 text-center transition-all hover:border-primary/50">
+<div class="absolute top-6 left-6 flex items-center gap-1.5 opacity-50">
+<span class="material-symbols-outlined text-sm">menu_book</span>
+<span id="cardSideLabel" class="text-[10px] font-bold uppercase tracking-wider">Câu hỏi</span>
+</div>
+<div class="max-w-lg">
+<h2 id="cardText" class="text-2xl md:text-3xl font-bold leading-tight">Đang tải...</h2>
+</div>
+<button id="flipBtn" class="mt-12 px-8 h-12 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full font-bold text-sm flex items-center gap-2 hover:scale-105 transition-transform active:scale-95 shadow-lg">
+<span class="material-symbols-outlined">refresh</span>
+                            Lật thẻ
+                        </button>
+</div>
+</div>
+<div id="controls" class="hidden flex items-center justify-center gap-4">
+<button class="difficulty-btn flex-1 flex flex-col items-center gap-2 p-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all">
+<span class="text-xs font-bold text-emerald-500">DỄ</span>
+<span class="text-[10px] text-slate-500 font-medium">4 ngày tới</span>
+</button>
+<button class="difficulty-btn flex-1 flex flex-col items-center gap-2 p-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl hover:border-primary/50 hover:bg-primary/5 transition-all">
+<span class="text-xs font-bold text-primary uppercase">Trung bình</span>
+<span class="text-[10px] text-slate-500 font-medium">1 ngày tới</span>
+</button>
+<button class="difficulty-btn flex-1 flex flex-col items-center gap-2 p-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-xl hover:border-rose-500/50 hover:bg-rose-500/5 transition-all">
+<span class="text-xs font-bold text-rose-500">KHÓ</span>
+<span class="text-[10px] text-slate-500 font-medium">10 phút nữa</span>
+</button>
+</div>
+</div>
+<div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-8 text-slate-400">
+<div class="flex items-center gap-2">
+<kbd class="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-[10px] font-bold text-slate-500 uppercase">Space</kbd>
+<span class="text-[10px] font-medium uppercase tracking-wider">Để lật</span>
+</div>
+<div class="flex items-center gap-2">
+<kbd class="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-[10px] font-bold text-slate-500 uppercase">1-3</kbd>
+<span class="text-[10px] font-medium uppercase tracking-wider">Đánh giá</span>
 </div>
 </div>
 </main>
-<script>
-    let flipped = false;
-    const card = document.querySelector('#flashcard');
-    const text = document.querySelector('#card-text');
-    const instr = document.querySelector('#card-instruction');
+</div>
 
-    card.onclick = () => {
-        flipped = !flipped;
-        if (flipped) {
-            text.textContent = "Mối quan hệ tỷ lệ nghịch giữa tỷ lệ thất nghiệp và GDP thực tế.";
-            instr.textContent = "Nhấn để quay lại câu hỏi";
-        } else {
-            text.textContent = "Định luật Okun mô tả mối quan hệ giữa yếu tố nào?";
-            instr.textContent = "Nhấn để xem câu trả lời";
-        }
-    };
-</script>
+<script src="js/flashcards.js"></script>
 </body></html>

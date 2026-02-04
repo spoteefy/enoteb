@@ -1,12 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.querySelector('form#login-form');
-    const registerForm = document.querySelector('form#register-form');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
 
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = loginForm.querySelector('input[type="email"]').value;
-            const password = loginForm.querySelector('input[type="password"]').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
             try {
                 const res = await fetch('/api/login', {
@@ -18,11 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = '/dashboard.html';
+                    window.location.href = 'dashboard.html';
                 } else {
                     alert(data.error || 'Login failed');
                 }
             } catch (err) {
+                console.error(err);
                 alert('An error occurred');
             }
         });
@@ -31,10 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const full_name = registerForm.querySelector('input[placeholder*="họ và tên"]').value;
-            const email = registerForm.querySelector('input[type="email"]').value;
-            const password = registerForm.querySelectorAll('input[type="password"]')[0].value;
-            const confirmPassword = registerForm.querySelectorAll('input[type="password"]')[1].value;
+            const full_name = document.getElementById('fullName').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
 
             if (password !== confirmPassword) {
                 alert('Mật khẩu không khớp');
@@ -50,11 +51,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (res.ok) {
                     alert('Đăng ký thành công! Vui lòng đăng nhập.');
-                    window.location.href = '/login.html';
+                    window.location.href = 'login.html';
                 } else {
                     alert(data.error || 'Registration failed');
                 }
             } catch (err) {
+                console.error(err);
                 alert('An error occurred');
             }
         });

@@ -1,13 +1,12 @@
 <!DOCTYPE html>
-<html class="dark" lang="vi">
-<head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Đăng ký tài khoản - Kho Tri Thức</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-    <script id="tailwind-config">
+<html class="dark" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Đăng ký tài khoản - Kho Tri Thức</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
@@ -25,9 +24,11 @@
             },
         }
     </script>
-    <style type="text/tailwindcss">
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+<style type="text/tailwindcss">
+        @layer base {
+            .material-symbols-outlined {
+                font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            }
         }
         :root {
             --checkbox-tick-svg: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27white%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3cpath d=%27M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z%27/%3e%3c/svg%3e');
@@ -39,7 +40,7 @@
 <div class="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-primary">
 <div class="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
 <div class="relative z-10 flex flex-col justify-center px-20 gap-8">
-<div class="w-full aspect-video bg-cover bg-center rounded-xl shadow-2xl border border-white/10" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA0Gc6BvyWLLJjAkMLzsZp7tLUNjl4ApNEHhNzEqqN179nwC4PWtniYLHv3exzTVCuz3GDBWYBe_kXTL4Jdg5Jhyk7bcLTLRmvqmQKNFQpgnkJzE3jgvpGMmFGmkS3u2XLyFpyIpzMZDz6aBmayjrf82fEpRE0EiG6CCGXr3vuL7FokDoZBmVSfMoQKrRfA5z6WzswEPTPuTDPA_T8zMMadQRJnsMg30yWqrKGdSnPf5YRu535sDsB7H1-cFPB5FeN4DM9-EdHkK_po");'>
+<div class="w-full aspect-video bg-cover bg-center rounded-xl shadow-2xl border border-white/10" data-alt="People collaborating or organizing digital books" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA0Gc6BvyWLLJjAkMLzsZp7tLUNjl4ApNEHhNzEqqN179nwC4PWtniYLHv3exzTVCuz3GDBWYBe_kXTL4Jdg5Jhyk7bcLTLRmvqmQKNFQpgnkJzE3jgvpGMmFGmkS3u2XLyFpyIpzMZDz6aBmayjrf82fEpRE0EiG6CCGXr3vuL7FokDoZBmVSfMoQKrRfA5z6WzswEPTPuTDPA_T8zMMadQRJnsMg30yWqrKGdSnPf5YRu535sDsB7H1-cFPB5FeN4DM9-EdHkK_po");'>
 </div>
 <div class="flex flex-col gap-4">
 <h1 class="text-white text-5xl font-black leading-tight tracking-tight">
@@ -69,24 +70,24 @@
 <h2 class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">Đăng ký tài khoản</h2>
 <p class="text-slate-600 dark:text-slate-400">Tạo tài khoản mới để bắt đầu lưu trữ tri thức.</p>
 </div>
-<form id="register-form" class="flex flex-col gap-1">
+<form id="registerForm" class="flex flex-col gap-1">
 <div class="flex flex-col gap-1 py-1">
 <label class="flex flex-col flex-1">
 <p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-2">Họ và tên</p>
-<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 text-base font-normal leading-normal" placeholder="Nhập họ và tên của bạn" type="text" required/>
+<input id="fullName" class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 text-base font-normal leading-normal" placeholder="Nhập họ và tên của bạn" type="text" required/>
 </label>
 </div>
 <div class="flex flex-col gap-1 py-1">
 <label class="flex flex-col flex-1">
 <p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-2">Email</p>
-<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 text-base font-normal leading-normal" placeholder="email@example.com" type="email" required/>
+<input id="email" class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 text-base font-normal leading-normal" placeholder="email@example.com" type="email" required/>
 </label>
 </div>
 <div class="flex flex-col gap-1 py-1">
 <label class="flex flex-col flex-1">
 <p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-2">Mật khẩu</p>
 <div class="flex w-full flex-1 items-stretch rounded-lg">
-<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 rounded-r-none border-r-0 text-base font-normal leading-normal" placeholder="Ít nhất 8 ký tự" type="password" required/>
+<input id="password" class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 rounded-r-none border-r-0 text-base font-normal leading-normal" placeholder="Ít nhất 8 ký tự" type="password" required/>
 <div class="text-slate-400 dark:text-[#9da6b9] flex border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] items-center justify-center px-4 rounded-r-lg border-l-0 cursor-pointer hover:text-primary transition-colors">
 <span class="material-symbols-outlined">visibility</span>
 </div>
@@ -97,7 +98,7 @@
 <label class="flex flex-col flex-1">
 <p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-2">Xác nhận mật khẩu</p>
 <div class="flex w-full flex-1 items-stretch rounded-lg">
-<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 rounded-r-none border-r-0 text-base font-normal leading-normal" placeholder="Nhập lại mật khẩu" type="password" required/>
+<input id="confirmPassword" class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b9] px-4 rounded-r-none border-r-0 text-base font-normal leading-normal" placeholder="Nhập lại mật khẩu" type="password" required/>
 <div class="text-slate-400 dark:text-[#9da6b9] flex border border-slate-300 dark:border-[#3b4354] bg-white dark:bg-[#1c1f27] items-center justify-center px-4 rounded-r-lg border-l-0 cursor-pointer hover:text-primary transition-colors">
 <span class="material-symbols-outlined">visibility</span>
 </div>
@@ -106,7 +107,7 @@
 </div>
 <div class="flex items-start justify-between py-4">
 <label class="flex items-start gap-x-3 cursor-pointer">
-<input class="mt-1 h-5 w-5 rounded border-slate-300 dark:border-[#3b4354] border-2 bg-transparent text-primary checked:bg-primary checked:border-primary focus:ring-0 focus:ring-offset-0 focus:outline-none transition-all" type="checkbox" required/>
+<input id="terms" class="mt-1 h-5 w-5 rounded border-slate-300 dark:border-[#3b4354] border-2 bg-transparent text-primary checked:bg-primary checked:border-primary focus:ring-0 focus:ring-offset-0 focus:outline-none transition-all" style="background-image: var(--checkbox-tick-svg);" type="checkbox" required/>
 <p class="text-slate-700 dark:text-slate-400 text-sm font-normal leading-relaxed">
                                 Tôi đồng ý với <a class="text-primary hover:underline font-medium" href="#">Điều khoản sử dụng</a> và <a class="text-primary hover:underline font-medium" href="#">Chính sách bảo mật</a>
 </p>
@@ -126,7 +127,7 @@
 <span class="material-symbols-outlined text-red-500">google</span>
 <span class="text-sm font-medium text-slate-700 dark:text-white">Google</span>
 </button>
-<button class="flex-1 flex items-center justify-center gap-2 h-12 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<button class="flex-1 flex items-center justify-center gap-2 h-12 border border-slate-200 dark:border-border-dark rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
 <span class="material-symbols-outlined text-blue-600">account_circle</span>
 <span class="text-sm font-medium text-slate-700 dark:text-white">Apple ID</span>
 </button>
@@ -138,5 +139,6 @@
 </div>
 </div>
 </div>
+
 <script src="js/auth.js"></script>
 </body></html>

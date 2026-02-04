@@ -24,6 +24,7 @@ db.serialize(() => {
         description TEXT,
         icon TEXT,
         color TEXT,
+        is_deleted INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id)
@@ -39,6 +40,7 @@ db.serialize(() => {
         content TEXT,
         url TEXT,
         file_path TEXT,
+        is_deleted INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(notebook_id) REFERENCES notebooks(id),
         FOREIGN KEY(user_id) REFERENCES users(id)
@@ -51,6 +53,7 @@ db.serialize(() => {
         user_id INTEGER,
         title TEXT,
         content TEXT,
+        is_deleted INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(notebook_id) REFERENCES notebooks(id),

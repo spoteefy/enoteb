@@ -1,117 +1,157 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        window.location.href = '/login.html';
-        return;
+// Dashboard & Drive Logic
+document.addEventListener('DOMContentLoaded', async () => {
+    const driveTab = document.getElementById('driveTab');
+    const notebooksTab = document.getElementById('notebooksTab');
+    const driveSection = document.getElementById('driveSection');
+    const notebooksSection = document.getElementById('notebooksSection');
+    const driveContent = document.getElementById('driveContent');
+    const notebooksGrid = document.getElementById('notebooksGrid');
+    const multiSelectBar = document.getElementById('multiSelectBar');
+    const selectedCount = document.getElementById('selectedCount');
+    const quickCreateModal = document.getElementById('quickCreateModal');
+
+    let categories = [];
+    let sources = [];
+    let notebooks = [];
+    let selectedSources = new Set();
+
+    async function loadData() {
+        categories = await apiRequest('/categories');
+        sources = await apiRequest('/sources');
+        notebooks = await apiRequest('/notebooks');
+        renderDrive();
+        renderNotebooks();
     }
 
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (user) {
-        document.querySelectorAll('.user-name').forEach(el => {
-            if (user.full_name) {
-                const initials = user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-                el.textContent = initials;
-            } else {
-                el.textContent = '??';
+    function renderDrive() {
+        driveContent.innerHTML = '';
+        const grouped = {};
+        categories.forEach(c => grouped[c.id] = { name: c.name, items: [] });
+        grouped[null] = { name: 'Chưa phân loại', items: [] };
+        sources.forEach(s => {
+            if (grouped[s.category_id]) grouped[s.category_id].items.push(s);
+            else grouped[null].items.push(s);
+        });
+
+        Object.keys(grouped).forEach(catId => {
+            const group = grouped[catId];
+            if (group.items.length === 0 && catId === 'null') return;
+            const section = document.createElement('div');
+            section.className = 'space-y-4';
+            section.innerHTML = `
+                <div class="flex items-center justify-between text-slate-500 font-bold uppercase text-xs tracking-widest px-2">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">folder</span>
+                        ${group.name}
+                    </div>
+                    ${catId !== 'null' ? `<button class="hover:text-red-400 delete-cat" data-id="${catId}"><span class="material-symbols-outlined text-xs">delete</span></button>` : ''}
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            `;
+            const grid = section.querySelector('div:last-child');
+            group.items.forEach(s => {
+                const card = document.createElement('div');
+                const isSelected = selectedSources.has(s.id);
+                card.className = `flex items-center justify-between p-4 bg-white dark:bg-slate-800 border ${isSelected ? 'border-primary' : 'border-slate-200 dark:border-slate-700'} rounded-xl hover:shadow-md transition-all cursor-pointer group`;
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" class="source-checkbox" ${isSelected ? 'checked' : ''}>
+                        <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500"><span class="material-symbols-outlined">description</span></div>
+                        <div><p class="text-sm font-bold truncate max-w-[150px]">${s.name}</p></div>
+                    </div>
+                `;
+                card.onclick = (e) => { if(!e.target.closest('input')) toggleSelectSource(s.id); };
+                card.querySelector('input').onchange = () => toggleSelectSource(s.id);
+                grid.appendChild(card);
+            });
+            if (section.querySelector('.delete-cat')) {
+                section.querySelector('.delete-cat').onclick = async () => {
+                    if (confirm('Xóa danh mục này?')) { await apiRequest(`/categories/${catId}`, { method: 'DELETE' }); loadData(); }
+                };
             }
+            driveContent.appendChild(section);
         });
     }
 
-    fetchNotebooks();
-
-    const createNotebookBtn = document.querySelector('#create-notebook-btn');
-    const notificationBtn = document.querySelector('button .material-symbols-outlined[textContent="notifications"]')?.parentElement;
-
-    if (notificationBtn) {
-        notificationBtn.onclick = () => toggleModal('notification-modal');
+    function renderNotebooks() {
+        notebooksGrid.innerHTML = '';
+        notebooks.forEach(nb => {
+            const card = document.createElement('div');
+            card.className = 'bg-white dark:bg-slate-800 border border-slate-700 rounded-2xl p-6 hover:shadow-xl cursor-pointer';
+            card.innerHTML = `<h3 class="text-lg font-bold">${nb.name}</h3><p class="text-sm text-slate-500">${nb.description || ''}</p>`;
+            card.onclick = () => window.location.href = `notebook.html?id=${nb.id}`;
+            notebooksGrid.appendChild(card);
+        });
     }
 
-    if (createNotebookBtn) {
-        createNotebookBtn.onclick = () => {
-            toggleModal('create-modal');
-        };
+    function toggleSelectSource(id) {
+        if (selectedSources.has(id)) selectedSources.delete(id);
+        else selectedSources.add(id);
+        updateMultiSelectBar();
+        renderDrive();
     }
 
-    const modalForm = document.querySelector('#modal-create-form');
-    if (modalForm) {
-        modalForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const name = document.querySelector('#modal-nb-name').value;
-            const description = document.querySelector('#modal-nb-desc').value;
-            const icon = document.querySelector('#icon-picker').textContent.trim();
-
-            const res = await fetch('/api/notebooks', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ name, description, icon })
-            });
-            const data = await res.json();
-            toggleModal('create-modal');
-            window.location.href = `/notebook.html?id=${data.id}`;
-        };
+    function updateMultiSelectBar() {
+        if (selectedSources.size > 0) { multiSelectBar.classList.remove('hidden'); selectedCount.textContent = selectedSources.size; }
+        else multiSelectBar.classList.add('hidden');
     }
+
+    driveTab.onclick = () => { driveSection.classList.remove('hidden'); notebooksSection.classList.add('hidden'); driveTab.classList.add('active-glass-item'); notebooksTab.classList.remove('active-glass-item'); };
+    notebooksTab.onclick = () => { notebooksSection.classList.remove('hidden'); driveSection.classList.add('hidden'); notebooksTab.classList.add('active-glass-item'); driveTab.classList.remove('active-glass-item'); };
+
+    document.getElementById('createNotebookBtn').onclick = () => quickCreateModal.classList.remove('hidden');
+    document.getElementById('closeQuickCreate').onclick = () => quickCreateModal.classList.add('hidden');
+
+    document.getElementById('confirmQuickCreate').onclick = async () => {
+        const name = document.getElementById('newNbName').value;
+        const description = document.getElementById('newNbDesc').value;
+        if (name) {
+            const nb = await apiRequest('/notebooks', { method: 'POST', body: JSON.stringify({ name, description }) });
+            window.location.href = `notebook.html?id=${nb.id}`;
+        }
+    };
+
+    document.getElementById('multiAddToNotebook').onclick = () => quickCreateModal.classList.remove('hidden');
+
+    document.getElementById('multiQuickAnalysis').onclick = async () => {
+        const sourceIds = Array.from(selectedSources);
+        try {
+            const data = await apiRequest('/ai/fast-analysis', { method: 'POST', body: JSON.stringify({ sourceIds }) });
+            localStorage.setItem('selectedSources', JSON.stringify(sourceIds));
+            window.location.href = 'analysis.html';
+        } catch (e) {
+            alert('Analysis failed');
+        }
+    };
+
+    document.getElementById('clearSelection').onclick = () => { selectedSources.clear(); updateMultiSelectBar(); renderDrive(); };
+
+    // Modals
+    const notificationBtn = document.getElementById('notificationBtn');
+    const notificationModal = document.getElementById('notificationModal');
+    const closeNotifications = document.getElementById('closeNotifications');
+
+    notificationBtn.onclick = () => notificationModal.classList.toggle('hidden');
+    closeNotifications.onclick = () => notificationModal.classList.add('hidden');
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadProgressModal = document.getElementById('uploadProgressModal');
+    const closeUploadProgress = document.getElementById('closeUploadProgress');
+
+    uploadBtn.onclick = () => {
+        uploadProgressModal.classList.remove('hidden');
+        // Simulate upload
+        setTimeout(() => {
+            uploadProgressModal.classList.add('hidden');
+            loadData();
+        }, 3000);
+    };
+    closeUploadProgress.onclick = () => uploadProgressModal.classList.add('hidden');
+
+    document.getElementById('createCategoryBtn').onclick = async () => {
+        const name = prompt('Tên danh mục:');
+        if (name) { await apiRequest('/categories', { method: 'POST', body: JSON.stringify({ name }) }); loadData(); }
+    };
+
+    loadData();
 });
-
-window.toggleModal = function(id) {
-    const modal = document.getElementById(id);
-    if (modal.classList.contains('hidden')) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    } else {
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
-    }
-}
-
-async function fetchNotebooks() {
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/notebooks', {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const notebooks = await res.json();
-    const container = document.querySelector('#notebooks-container');
-    if (!container) return;
-
-    // Preserve the "Create New" button
-    const createBtnHtml = container.querySelector('button').outerHTML;
-    container.innerHTML = createBtnHtml;
-    // Reload createBtn reference since innerHTML was overwritten
-    const newCreateBtn = container.querySelector('#create-notebook-btn');
-    if (newCreateBtn) {
-        newCreateBtn.onclick = () => toggleModal('create-modal');
-    }
-
-    notebooks.forEach(nb => {
-        const card = document.createElement('div');
-        card.className = "notebook-card group bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-2xl p-6 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 transition-all duration-300 flex flex-col justify-between relative cursor-pointer";
-        card.onclick = () => window.location.href = `/notebook.html?id=${nb.id}`;
-        card.innerHTML = `
-            <div class="absolute top-4 right-4 opacity-0 action-btn transition-opacity">
-                <button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">
-                    <span class="material-symbols-outlined text-slate-400">more_vert</span>
-                </button>
-            </div>
-            <div>
-                <div class="w-12 h-12 flex items-center justify-center text-3xl mb-4 bg-orange-100 dark:bg-orange-500/10 rounded-xl">
-                    ${nb.icon || '💡'}
-                </div>
-                <h3 class="text-lg font-bold mb-2 group-hover:text-primary transition-colors">${nb.name}</h3>
-                <p class="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-6">${nb.description || 'Chưa có mô tả'}</p>
-            </div>
-            <div class="flex items-center gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-4">
-                <div class="flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-base">source</span>
-                    <span>0 nguồn</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-base">description</span>
-                    <span>0 ghi chú</span>
-                </div>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-}
