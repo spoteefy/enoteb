@@ -1,7 +1,9 @@
 const fs = require('fs');
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
-const path = require('path');
+const { RecursiveCharacterTextSplitter } = require("@langchain/textsplitters");
+const { GoogleGenerativeAIEmbeddings } = require("@langchain/google-genai");
+const db = process.env.NODE_ENV === 'test' ? require('./db_sqlite') : require('./db');
 
 async function extractText(filePath, mimetype) {
     if (!filePath) return '';
@@ -24,4 +26,45 @@ async function extractText(filePath, mimetype) {
     }
 }
 
-module.exports = { extractText };
+async function processSource(sourceId, content) {
+    if (!content) return;
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        console.warn("GEMINI_API_KEY not set. Skipping embedding.");
+        return;
+    }
+
+    try {
+        const textSplitter = new RecursiveCharacterTextSplitter({
+            chunkSize: 1000,
+            chunkOverlap: 200,
+        });
+
+        const chunks = await textSplitter.splitText(content);
+        const embeddings = new GoogleGenerativeAIEmbeddings({
+            apiKey: apiKey,
+        });
+
+        // Use embedDocuments for batch processing
+        const vectorEmbeddings = await embeddings.embedDocuments(chunks);
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const embedding = vectorEmbeddings[i];
+
+            // SQLite expects stringified JSON for embeddings table
+            const embeddingVal = process.env.NODE_ENV === 'test' ? JSON.stringify(embedding) : embedding;
+
+            await db.query(
+                'INSERT INTO source_chunks (source_id, content, embedding) VALUES ($1, $2, $3)',
+                [sourceId, chunk, embeddingVal]
+            );
+        }
+        console.log(`Processed ${chunks.length} chunks for source ${sourceId}`);
+    } catch (e) {
+        console.error('Processing source failed:', e);
+    }
+}
+
+module.exports = { extractText, processSource };

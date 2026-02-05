@@ -45,6 +45,11 @@ app.use(express.json());
 // Sensitive request logging removed for production safety
 app.use(express.static('public'));
 
+app.get('/api/ai-health', (req, res) => {
+    const hasKey = !!process.env.GEMINI_API_KEY;
+    res.json({ status: hasKey ? 'ok' : 'missing_api_key', service: 'Google Gemini' });
+});
+
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
     console.error("FATAL: JWT_SECRET environment variable is required in production.");
@@ -104,6 +109,12 @@ app.post('/api/login', async (req, res) => {
         if (!user) return res.status(400).json({ error: 'User not found' });
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
+
+        // Log session
+        const deviceName = req.headers['user-agent'] || 'Unknown Device';
+        await db.query('INSERT INTO sessions (user_id, device_name, location) VALUES ($1, $2, $3)',
+            [user.id, deviceName, 'Local Access']);
+
         const token = jwt.sign({ id: user.id, email: user.email }, ACTUAL_JWT_SECRET, { expiresIn: '24h' });
         res.json({ token, user: { id: user.id, email: user.email, full_name: user.full_name, avatar: user.avatar } });
     } catch (e) {
@@ -223,7 +234,13 @@ app.post('/api/sources', authenticateToken, upload.single('file'), async (req, r
             'INSERT INTO sources (user_id, category_id, name, type, content, url, file_path) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
             [req.user.id, category_id || null, name, type, content, url, filePath]
         );
-        res.status(201).json(result.rows[0]);
+        const source = result.rows[0];
+
+        // Asynchronously process source (chunking & embedding)
+        // Note: In production, this should ideally be handled by a worker queue.
+        ingestion.processSource(source.id, source.content).catch(err => console.error("Async ingestion failed:", err));
+
+        res.status(201).json(source);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

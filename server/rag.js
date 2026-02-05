@@ -1,36 +1,5 @@
-const { RecursiveCharacterTextSplitter } = require("@langchain/textsplitters");
 const { GoogleGenerativeAIEmbeddings } = require("@langchain/google-genai");
-
-async function createVectorStore(sources) {
-    if (!sources || sources.length === 0) return null;
-
-    const embeddings = new GoogleGenerativeAIEmbeddings({
-        apiKey: process.env.GOOGLE_API_KEY,
-    });
-
-    const textSplitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 1000,
-        chunkOverlap: 200,
-    });
-
-    const docs = [];
-    for (const source of sources) {
-        const chunks = await textSplitter.splitText(source.content || "");
-        for (const chunk of chunks) {
-            try {
-                const embedding = await embeddings.embedQuery(chunk);
-                docs.push({
-                    pageContent: chunk,
-                    metadata: { sourceName: source.name },
-                    embedding
-                });
-            } catch (e) {
-                console.error("Embedding failed for chunk:", e);
-            }
-        }
-    }
-    return docs;
-}
+const db = process.env.NODE_ENV === 'test' ? require('./db_sqlite') : require('./db');
 
 function cosineSimilarity(vecA, vecB) {
     let dotProduct = 0;
@@ -45,35 +14,57 @@ function cosineSimilarity(vecA, vecB) {
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-async function getRelevantContext(docs, query, k = 5) {
-    if (!docs || docs.length === 0) return { context: "", citations: [] };
+async function getRelevantContext(sources, query, k = 10) {
+    if (!sources || sources.length === 0) return { context: "", citations: [] };
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return { context: "Lỗi: GEMINI_API_KEY chưa được thiết lập.", citations: [] };
 
     const embeddings = new GoogleGenerativeAIEmbeddings({
-        apiKey: process.env.GOOGLE_API_KEY,
+        apiKey: apiKey,
     });
 
     try {
-        const queryEmbedding = await embeddings.embedQuery(query);
-        const scoredDocs = docs.map(doc => ({
-            pageContent: doc.pageContent,
-            metadata: doc.metadata,
-            score: cosineSimilarity(queryEmbedding, doc.embedding)
-        }));
+        const sourceIds = sources.map(s => s.id);
+        const placeholders = sourceIds.map((_, i) => `$${i + 1}`).join(',');
 
-        const results = scoredDocs.sort((a, b) => b.score - a.score).slice(0, k);
+        // Fetch all pre-computed chunks for these sources
+        const result = await db.query(
+            `SELECT sc.*, s.name as source_name FROM source_chunks sc JOIN sources s ON s.id = sc.source_id WHERE sc.source_id IN (${placeholders})`,
+            sourceIds
+        );
+
+        const chunks = result.rows;
+        if (chunks.length === 0) {
+            // Fallback: If no chunks found, return first source content as a single block (not ideal but safe)
+            return { context: sources[0].content || "", citations: [sources[0].name] };
+        }
+
+        const queryEmbedding = await embeddings.embedQuery(query);
+
+        const scoredChunks = chunks.map(chunk => {
+            const chunkEmbedding = typeof chunk.embedding === 'string' ? JSON.parse(chunk.embedding) : chunk.embedding;
+            return {
+                content: chunk.content,
+                sourceName: chunk.source_name,
+                score: cosineSimilarity(queryEmbedding, chunkEmbedding)
+            };
+        });
+
+        const topResults = scoredChunks.sort((a, b) => b.score - a.score).slice(0, k);
 
         let context = "Tài liệu tham khảo:\n";
         const citations = new Set();
-        results.forEach((res, i) => {
-            context += `[${i+1}] (${res.metadata.sourceName}): ${res.pageContent}\n\n`;
-            citations.add(res.metadata.sourceName);
+        topResults.forEach((res, i) => {
+            context += `[${i+1}] (${res.sourceName}): ${res.content}\n\n`;
+            citations.add(res.sourceName);
         });
 
         return { context, citations: Array.from(citations) };
     } catch (e) {
-        console.error("Query embedding failed:", e);
+        console.error("RAG Context retrieval failed:", e);
         return { context: "", citations: [] };
     }
 }
 
-module.exports = { createVectorStore, getRelevantContext };
+module.exports = { getRelevantContext };

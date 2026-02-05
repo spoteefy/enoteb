@@ -122,6 +122,15 @@ const initDb = async () => {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
+        // Source Chunks table for persistent vector storage
+        await client.query(`CREATE TABLE IF NOT EXISTS source_chunks (
+            id SERIAL PRIMARY KEY,
+            source_id INTEGER REFERENCES sources(id) ON DELETE CASCADE,
+            content TEXT,
+            embedding JSONB,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
         await client.query('COMMIT');
         console.log('Database initialized successfully');
     } catch (e) {

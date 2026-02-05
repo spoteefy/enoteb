@@ -123,6 +123,14 @@ const initDb = async () => {
                 difficulty TEXT,
                 next_review TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+            db.run(`CREATE TABLE IF NOT EXISTS source_chunks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_id INTEGER,
+                content TEXT,
+                embedding TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
             )`, (err) => {
                 if (err) reject(err);
                 else resolve();

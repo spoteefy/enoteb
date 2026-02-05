@@ -136,32 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
              `;
         } else if (tab === 'sessions') {
-            settingsContent.innerHTML = `
-                <div class="max-w-4xl mx-auto px-6 py-12 lg:px-12">
-                    <header class="mb-10">
-                        <h1 class="text-3xl font-bold mb-2">Quản lý Thiết bị & Phiên đăng nhập</h1>
-                        <p class="text-slate-400">Xem và quản lý các thiết bị hiện đang truy cập vào tài khoản.</p>
-                    </header>
-                    <div class="space-y-6">
-                        <section class="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-border-dark overflow-hidden">
-                            <div class="p-6 flex items-center justify-between">
-                                <div class="flex items-center gap-5">
-                                    <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                        <span class="material-symbols-outlined text-3xl">desktop_windows</span>
-                                    </div>
-                                    <div>
-                                        <div class="flex items-center gap-2">
-                                            <h3 class="font-bold text-lg">MacBook Pro (Thiết bị này)</h3>
-                                            <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase">Đang hoạt động</span>
-                                        </div>
-                                        <p class="text-slate-500 dark:text-slate-400 text-sm">Chrome • TP. Hồ Chí Minh, Việt Nam</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                    </div>
-                </div>
-            `;
+            renderSessions();
         }
     }
 
