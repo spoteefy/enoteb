@@ -175,21 +175,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     sendChatBtn.onclick = async () => {
         const message = chatInput.value.trim();
         if (!message) return;
+
         addChatMessage('You', message, true);
         chatInput.value = '';
-        const data = await apiRequest('/ai/chat', { method: 'POST', body: JSON.stringify({ message, notebookId }) });
-        addChatMessage('AI Assistant', data.response, false, data.citations);
+
+        // Show loading state
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'flex flex-col gap-2 max-w-[90%]';
+        loadingDiv.id = 'ai-loading';
+        loadingDiv.innerHTML = `
+            <div class="p-4 rounded-2xl rounded-tl-none bg-gray-100 dark:bg-[#1a212f] text-gray-800 dark:text-gray-200 border border-white/5 text-sm">
+                <span class="material-symbols-outlined animate-spin text-primary">sync</span> AI đang trả lời...
+            </div>
+        `;
+        chatHistory.appendChild(loadingDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+
+        try {
+            const data = await apiRequest('/ai/chat', { method: 'POST', body: JSON.stringify({ message, notebookId }) });
+            document.getElementById('ai-loading')?.remove();
+            addChatMessage('AI Assistant', data.response, false, data.citations);
+        } catch (e) {
+            document.getElementById('ai-loading')?.remove();
+            addChatMessage('System', 'Lỗi kết nối AI. Vui lòng thử lại sau.', false);
+        }
     };
 
     function addChatMessage(sender, text, isUser, citations = []) {
         const div = document.createElement('div');
         div.className = `flex flex-col gap-2 ${isUser ? 'items-end' : 'max-w-[90%]'}`;
+
+        // Use marked if available for pretty rendering
+        let contentHtml = text;
+        if (typeof marked !== 'undefined' && !isUser) {
+            contentHtml = marked.parse(text);
+        }
+
         div.innerHTML = `
-            <div class="p-4 rounded-2xl ${isUser ? 'rounded-tr-none bg-primary text-white shadow-lg' : 'rounded-tl-none bg-gray-100 dark:bg-[#1a212f] text-gray-800 dark:text-gray-200 border border-white/5'} text-sm leading-relaxed">
-                ${text}
-                ${citations.length > 0 ? `<div class="mt-4 flex flex-wrap gap-2">${citations.map(c => `<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-lg border border-primary/20">${c}</span>`).join('')}</div>` : ''}
+            <div class="p-4 rounded-2xl ${isUser ? 'rounded-tr-none bg-primary text-white shadow-lg' : 'rounded-tl-none bg-gray-100 dark:bg-[#1a212f] text-gray-800 dark:text-gray-200 border border-white/5'} text-sm leading-relaxed prose dark:prose-invert max-w-none">
+                ${contentHtml}
+                ${citations.length > 0 ? `<div class="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-2"><p class="text-[10px] w-full text-slate-500 font-bold uppercase">Trích dẫn:</p>${citations.map(c => `<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-lg border border-primary/20">${c}</span>`).join('')}</div>` : ''}
             </div>
-            <span class="text-[10px] text-[#9da6b9] font-medium">${sender} • Just now</span>
+            <span class="text-[10px] text-[#9da6b9] font-medium">${sender} • ${new Date().toLocaleTimeString()}</span>
         `;
         chatHistory.appendChild(div);
         chatHistory.scrollTop = chatHistory.scrollHeight;

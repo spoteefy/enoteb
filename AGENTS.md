@@ -32,7 +32,8 @@ To enable RAG features:
 ## Key Features Logic
 - **Ownership:** Every source, notebook, and note is tied to a `user_id`. Middleware in `server/app.js` ensures users can only access their own data.
 - **Ingestion:** Uploaded files (PDF, DOCX, etc.) are parsed using `server/ingestion.js` and stored as plain text.
-- **RAG:** Context retrieval is handled in `server/rag.js` using manual cosine similarity with Gemini embeddings.
+- **RAG:** Context retrieval is handled in `server/rag.js` using manual cosine similarity with Gemini embeddings. Chunks are pre-computed during ingestion and stored in `source_chunks`.
+- **Analyses:** AI analysis results are persisted in the `analyses` table, allowing for historical retrieval and cross-device consistency.
 - **Trash:** Deleted items are kept for 30 days. A background cron-like task in `server/app.js` performs periodic cleanup.
 
 ## UI Verification

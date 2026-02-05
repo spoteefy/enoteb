@@ -133,6 +133,16 @@ const initDb = async () => {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
+        // Analyses table for persisting AI results
+        await client.query(`CREATE TABLE IF NOT EXISTS analyses (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id),
+            notebook_id INTEGER REFERENCES notebooks(id),
+            summary TEXT,
+            topics_json JSONB,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
         await client.query('COMMIT');
         console.log('Database initialized successfully');
     } catch (e) {

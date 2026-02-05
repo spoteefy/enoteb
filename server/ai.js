@@ -29,6 +29,7 @@ async function chatWithSources(message, sources) {
 
         const systemPrompt = `Bạn là Trợ lý AI của Kho Tri Thức. Bạn có quyền truy cập vào các tài liệu sau đây để trả lời câu hỏi của người dùng.
 Hãy trả lời một cách chuyên nghiệp, chính xác dựa TRÊN DỮ LIỆU ĐƯỢC CUNG CẤP.
+Sử dụng định dạng Markdown để trả lời dễ đọc hơn (bold, lists, v.v.).
 Nếu thông tin không có trong tài liệu, hãy nói rõ là bạn không biết.
 
 DỮ LIỆU NGUỒN:
@@ -41,7 +42,8 @@ ${context}`;
 
         return {
             response: response.content,
-            citations: citations
+            citations: citations,
+            status: 'success'
         };
     } catch (error) {
         console.error("AI Chat Error:", error);

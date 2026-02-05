@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const token = localStorage.getItem('token');
+    const urlParams = new URLSearchParams(window.location.search);
+    const analysisId = urlParams.get('id');
     const selectedIds = JSON.parse(localStorage.getItem('selectedSources') || '[]');
 
     if (!token) {
@@ -37,9 +39,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             sourceList.appendChild(div);
         });
 
-        displayAnalysis();
+        if (analysisId) {
+            loadAnalysisFromDb(analysisId);
+        } else {
+            displayAnalysis();
+        }
     } catch (err) {
         console.error(err);
+    }
+
+    async function loadAnalysisFromDb(id) {
+        summaryText.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Đang tải phân tích...';
+        try {
+            const data = await apiRequest(`/analyses/${id}`);
+            renderData({
+                summary: data.summary,
+                topics: typeof data.topics_json === 'string' ? JSON.parse(data.topics_json) : data.topics_json
+            });
+        } catch (e) {
+            summaryText.textContent = "Lỗi khi tải dữ liệu từ máy chủ.";
+        }
     }
 
     function displayAnalysis() {
@@ -48,8 +67,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             summaryText.textContent = "Không tìm thấy dữ liệu phân tích.";
             return;
         }
+        renderData(data);
+    }
 
-        summaryText.textContent = data.summary;
+    function renderData(data) {
+        if (typeof marked !== 'undefined') {
+            summaryText.innerHTML = marked.parse(data.summary);
+            summaryText.classList.add('prose', 'dark:prose-invert', 'max-w-none');
+        } else {
+            summaryText.textContent = data.summary;
+        }
 
         topicsList.innerHTML = '';
         (data.topics || []).forEach((topic, i) => {

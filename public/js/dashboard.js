@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await apiRequest('/ai/fast-analysis', { method: 'POST', body: JSON.stringify({ sourceIds }) });
             localStorage.setItem('selectedSources', JSON.stringify(sourceIds));
             localStorage.setItem('lastAnalysis', JSON.stringify(data));
-            window.location.href = 'analysis.html';
+            window.location.href = `analysis.html?id=${data.id}`;
         } catch (e) {
             alert('Analysis failed');
         }

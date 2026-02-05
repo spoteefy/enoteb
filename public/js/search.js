@@ -98,9 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
 
+            let summaryHtml = data.summary;
+            if (typeof marked !== 'undefined') {
+                summaryHtml = marked.parse(data.summary);
+            }
+
             aiAnalysisContent.innerHTML = `
-                <div class="flex flex-col gap-4">
-                    <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">${data.summary}</p>
+                <div class="flex flex-col gap-4 prose dark:prose-invert text-sm">
+                    ${summaryHtml}
                 </div>
             `;
 

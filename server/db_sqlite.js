@@ -135,6 +135,16 @@ const initDb = async () => {
                 embedding TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
+            )`);
+            db.run(`CREATE TABLE IF NOT EXISTS analyses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                notebook_id INTEGER,
+                summary TEXT,
+                topics_json TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (notebook_id) REFERENCES notebooks(id)
             )`, (err) => {
                 if (err) reject(err);
                 else resolve();

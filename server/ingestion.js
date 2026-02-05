@@ -9,25 +9,36 @@ async function extractText(filePath, mimetype) {
     if (!filePath) return '';
 
     try {
+        let text = '';
         if (mimetype === 'application/pdf') {
             const dataBuffer = fs.readFileSync(filePath);
             const data = await pdf(dataBuffer);
-            return data.text;
+            text = data.text;
         } else if (mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
             const result = await mammoth.extractRawText({ path: filePath });
-            return result.value;
+            text = result.value;
         } else if (mimetype === 'text/plain' || mimetype === 'text/markdown') {
-            return fs.readFileSync(filePath, 'utf8');
+            text = fs.readFileSync(filePath, 'utf8');
         }
-        return '';
+
+        // Basic sanitization: remove potential script tags and common attack patterns
+        let sanitized = text.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "");
+
+        // Remove suspicious event handlers
+        sanitized = sanitized.replace(/on\w+="[^"]*"/gim, "");
+
+        return sanitized;
     } catch (e) {
         console.error('Text extraction failed:', e);
         return '';
     }
 }
 
-async function processSource(sourceId, content) {
-    if (!content) return;
+async function processSource(sourceId, content, retryCount = 0) {
+    if (!content) {
+        await db.query('UPDATE sources SET embedding_status = $1 WHERE id = $2', ['ready', sourceId]);
+        return;
+    }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -43,18 +54,21 @@ async function processSource(sourceId, content) {
         });
 
         const chunks = await textSplitter.splitText(content);
+        if (chunks.length === 0) {
+             await db.query('UPDATE sources SET embedding_status = $1 WHERE id = $2', ['ready', sourceId]);
+             return;
+        }
+
         const embeddings = new GoogleGenerativeAIEmbeddings({
             apiKey: apiKey,
         });
 
-        // Use embedDocuments for batch processing
+        // Batch processing chunks
         const vectorEmbeddings = await embeddings.embedDocuments(chunks);
 
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
             const embedding = vectorEmbeddings[i];
-
-            // SQLite expects stringified JSON for embeddings table
             const embeddingVal = process.env.NODE_ENV === 'test' ? JSON.stringify(embedding) : embedding;
 
             await db.query(
@@ -65,8 +79,15 @@ async function processSource(sourceId, content) {
         await db.query('UPDATE sources SET embedding_status = $1 WHERE id = $2', ['ready', sourceId]);
         console.log(`Processed ${chunks.length} chunks for source ${sourceId}`);
     } catch (e) {
-        console.error('Processing source failed:', e);
-        await db.query('UPDATE sources SET embedding_status = $1 WHERE id = $2', ['failed', sourceId]);
+        console.error(`Processing source ${sourceId} failed (attempt ${retryCount + 1}):`, e.message);
+
+        if (retryCount < 2) {
+            // Simple exponential backoff
+            const delay = Math.pow(2, retryCount) * 1000;
+            setTimeout(() => processSource(sourceId, content, retryCount + 1), delay);
+        } else {
+            await db.query('UPDATE sources SET embedding_status = $1 WHERE id = $2', ['failed', sourceId]);
+        }
     }
 }
 

@@ -28,9 +28,9 @@ async function getRelevantContext(sources, query, k = 10) {
         const sourceIds = sources.map(s => s.id);
         const placeholders = sourceIds.map((_, i) => `$${i + 1}`).join(',');
 
-        // Fetch all pre-computed chunks for these sources
+        // Fetch pre-computed chunks for these sources with a safety limit to protect RAM
         const result = await db.query(
-            `SELECT sc.*, s.name as source_name FROM source_chunks sc JOIN sources s ON s.id = sc.source_id WHERE sc.source_id IN (${placeholders})`,
+            `SELECT sc.*, s.name as source_name FROM source_chunks sc JOIN sources s ON s.id = sc.source_id WHERE sc.source_id IN (${placeholders}) ORDER BY sc.id DESC LIMIT 300`,
             sourceIds
         );
 

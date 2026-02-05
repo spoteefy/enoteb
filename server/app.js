@@ -576,6 +576,17 @@ app.post('/api/ai/fast-analysis', authenticateToken, async (req, res) => {
         if (sources.length === 0) return res.status(400).json({ error: 'No sources selected or unauthorized access' });
 
         const result = await ai.fastAnalysis(sources);
+
+        // Persist analysis result
+        const topicsJson = JSON.stringify(result.topics);
+        const persistRes = await db.query(
+            'INSERT INTO analyses (user_id, notebook_id, summary, topics_json) VALUES ($1, $2, $3, $4) RETURNING id',
+            [req.user.id, notebookId || null, result.summary, process.env.NODE_ENV === 'test' ? topicsJson : topicsJson]
+            // In pg, it expects a JSONB object if column is JSONB, but if I pass string it usually handles it or I might need JSON.parse.
+            // Actually, for JSONB column in pg, passing an object or stringified json works depending on the driver.
+        );
+        result.id = persistRes.rows[0].id;
+
         res.json(result);
     } catch (e) {
         console.error(e);
@@ -628,6 +639,27 @@ app.post('/api/ai/generate-flashcards', authenticateToken, async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: "AI Service error" });
+    }
+});
+
+// --- AI Analysis History ---
+
+app.get('/api/notebooks/:id/analyses', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM analyses WHERE notebook_id = $1 AND user_id = $2 ORDER BY created_at DESC', [req.params.id, req.user.id]);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/analyses/:id', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM analyses WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Analysis not found' });
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
