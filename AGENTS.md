@@ -19,6 +19,8 @@ The application is designed to run with PostgreSQL for production/local deployme
    ```
 4. On startup, the server will automatically run migrations defined in `server/db.js`.
 
+*Installation Tip:* If you encounter dependency conflicts during `npm install`, please use `npm install --legacy-peer-deps`.
+
 *Note: For development in environments without PostgreSQL, it falls back to `server/database.db` (SQLite).*
 
 ## AI Configuration
