@@ -66,13 +66,15 @@ const initDb = async () => {
                 content TEXT,
                 url TEXT,
                 file_path TEXT,
+                embedding_status TEXT DEFAULT 'pending',
                 is_deleted INTEGER DEFAULT 0,
                 scheduled_delete_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )`, (err) => {
-                // If column category_id missing because table already existed, add it
+                // If column missing because table already existed, add them
                 if (!err) {
                     db.run("ALTER TABLE sources ADD COLUMN category_id INTEGER", (e) => {});
+                    db.run("ALTER TABLE sources ADD COLUMN embedding_status TEXT DEFAULT 'pending'", (e) => {});
                 }
             });
             db.run(`CREATE TABLE IF NOT EXISTS notebook_sources (

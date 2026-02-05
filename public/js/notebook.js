@@ -54,12 +54,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentSources.forEach(s => {
             const item = document.createElement('div');
             item.className = `flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer group ${activeItem?.id === s.id && activeItem?.type === 'source' ? 'bg-primary/10' : ''}`;
+
+            let statusIcon = '';
+            if (s.embedding_status === 'ready') statusIcon = '<span class="material-symbols-outlined text-[12px] text-green-500" title="AI Sẵn sàng">auto_awesome</span>';
+            else if (s.embedding_status === 'pending') statusIcon = '<span class="material-symbols-outlined text-[12px] text-amber-500 animate-spin" title="Đang xử lý AI">sync</span>';
+            else if (s.embedding_status === 'no_key' || s.embedding_status === 'failed') statusIcon = '<span class="material-symbols-outlined text-[12px] text-red-500" title="AI chưa sẵn sàng">error</span>';
+
             item.innerHTML = `
                 <input type="checkbox" class="source-active-check w-4 h-4 rounded border-slate-300 text-primary" ${s.is_active ? 'checked' : ''}>
                 <div class="text-red-500 flex items-center justify-center rounded-lg bg-red-500/10 shrink-0 size-8">
                     <span class="material-symbols-outlined text-base">picture_as_pdf</span>
                 </div>
-                <p class="text-xs font-semibold truncate flex-1">${s.name}</p>
+                <div class="flex flex-col flex-1 min-w-0">
+                    <p class="text-xs font-semibold truncate">${s.name}</p>
+                    ${statusIcon}
+                </div>
                 <button class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white transition-opacity preview-btn">
                     <span class="material-symbols-outlined text-sm">open_in_full</span>
                 </button>

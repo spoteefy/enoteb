@@ -55,6 +55,7 @@ const initDb = async () => {
             content TEXT,
             url TEXT,
             file_path TEXT,
+            embedding_status TEXT DEFAULT 'pending', -- pending, ready, failed, no_key
             is_deleted INTEGER DEFAULT 0,
             scheduled_delete_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

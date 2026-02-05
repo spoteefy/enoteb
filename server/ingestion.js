@@ -32,6 +32,7 @@ async function processSource(sourceId, content) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
         console.warn("GEMINI_API_KEY not set. Skipping embedding.");
+        await db.query('UPDATE sources SET embedding_status = $1 WHERE id = $2', ['no_key', sourceId]);
         return;
     }
 
@@ -61,9 +62,11 @@ async function processSource(sourceId, content) {
                 [sourceId, chunk, embeddingVal]
             );
         }
+        await db.query('UPDATE sources SET embedding_status = $1 WHERE id = $2', ['ready', sourceId]);
         console.log(`Processed ${chunks.length} chunks for source ${sourceId}`);
     } catch (e) {
         console.error('Processing source failed:', e);
+        await db.query('UPDATE sources SET embedding_status = $1 WHERE id = $2', ['failed', sourceId]);
     }
 }
 

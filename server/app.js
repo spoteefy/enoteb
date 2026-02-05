@@ -563,11 +563,11 @@ app.post('/api/ai/fast-analysis', authenticateToken, async (req, res) => {
         let sources = [];
         if (sourceIds && sourceIds.length > 0) {
             const placeholders = sourceIds.map((_, i) => `$${i + 1}`).join(',');
-            const result = await db.query(`SELECT name, content FROM sources WHERE id IN (${placeholders}) AND user_id = $${sourceIds.length + 1} AND is_deleted = 0`, [...sourceIds, req.user.id]);
+            const result = await db.query(`SELECT id, name, content FROM sources WHERE id IN (${placeholders}) AND user_id = $${sourceIds.length + 1} AND is_deleted = 0`, [...sourceIds, req.user.id]);
             sources = result.rows;
         } else if (notebookId) {
             const result = await db.query(
-                'SELECT s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id JOIN notebooks n ON n.id = ns.notebook_id WHERE ns.notebook_id = $1 AND n.user_id = $2 AND s.is_deleted = 0 AND ns.is_active = 1',
+                'SELECT s.id, s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id JOIN notebooks n ON n.id = ns.notebook_id WHERE ns.notebook_id = $1 AND n.user_id = $2 AND s.is_deleted = 0 AND ns.is_active = 1',
                 [notebookId, req.user.id]
             );
             sources = result.rows;
@@ -591,7 +591,7 @@ app.post('/api/ai/chat', authenticateToken, async (req, res) => {
         if (nbCheck.rows.length === 0) return res.status(403).json({ error: 'Unauthorized access to notebook' });
 
         const result = await db.query(
-            'SELECT s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id JOIN notebooks n ON n.id = ns.notebook_id WHERE ns.notebook_id = $1 AND n.user_id = $2 AND s.is_deleted = 0 AND ns.is_active = 1',
+            'SELECT s.id, s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id JOIN notebooks n ON n.id = ns.notebook_id WHERE ns.notebook_id = $1 AND n.user_id = $2 AND s.is_deleted = 0 AND ns.is_active = 1',
             [notebookId, req.user.id]
         );
         const sources = result.rows;
@@ -611,7 +611,7 @@ app.post('/api/ai/generate-flashcards', authenticateToken, async (req, res) => {
         if (nbCheck.rows.length === 0) return res.status(403).json({ error: 'Unauthorized notebook' });
 
         const result = await db.query(
-            'SELECT s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id WHERE ns.notebook_id = $1 AND s.user_id = $2 AND s.is_deleted = 0 AND ns.is_active = 1',
+            'SELECT s.id, s.name, s.content FROM sources s JOIN notebook_sources ns ON s.id = ns.source_id WHERE ns.notebook_id = $1 AND s.user_id = $2 AND s.is_deleted = 0 AND ns.is_active = 1',
             [notebookId, req.user.id]
         );
         const sources = result.rows;

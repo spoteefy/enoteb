@@ -53,11 +53,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const card = document.createElement('div');
                 const isSelected = selectedSources.has(s.id);
                 card.className = `flex items-center justify-between p-4 bg-white dark:bg-slate-800 border ${isSelected ? 'border-primary' : 'border-slate-200 dark:border-slate-700'} rounded-xl hover:shadow-md transition-all cursor-pointer group`;
+
+                let statusHtml = '';
+                if (s.embedding_status === 'ready') statusHtml = '<span class="text-[10px] text-green-500 flex items-center gap-0.5"><span class="material-symbols-outlined text-[12px]">auto_awesome</span> Sẵn sàng</span>';
+                else if (s.embedding_status === 'pending') statusHtml = '<span class="text-[10px] text-amber-500 flex items-center gap-0.5 animate-pulse"><span class="material-symbols-outlined text-[12px]">sync</span> Đang xử lý</span>';
+                else if (s.embedding_status === 'no_key' || s.embedding_status === 'failed') statusHtml = '<span class="text-[10px] text-red-500 flex items-center gap-0.5" title="Thiếu API Key hoặc lỗi xử lý"><span class="material-symbols-outlined text-[12px]">error</span> AI chưa sẵn sàng</span>';
+
                 card.innerHTML = `
                     <div class="flex items-center gap-3">
                         <input type="checkbox" class="source-checkbox" ${isSelected ? 'checked' : ''}>
                         <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500"><span class="material-symbols-outlined">description</span></div>
-                        <div><p class="text-sm font-bold truncate max-w-[150px]">${s.name}</p></div>
+                        <div class="flex flex-col">
+                            <p class="text-sm font-bold truncate max-w-[150px]">${s.name}</p>
+                            ${statusHtml}
+                        </div>
                     </div>
                 `;
                 card.onclick = (e) => { if(!e.target.closest('input')) toggleSelectSource(s.id); };
