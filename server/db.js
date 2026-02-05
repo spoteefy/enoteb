@@ -86,6 +86,7 @@ const initDb = async () => {
             user_id INTEGER REFERENCES users(id),
             item_id INTEGER,
             item_type TEXT, -- notebook, source, note, category
+            item_name TEXT,
             deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP
         )`);

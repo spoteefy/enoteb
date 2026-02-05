@@ -138,6 +138,21 @@ app.patch('/api/profile', authenticateToken, async (req, res) => {
     }
 });
 
+app.delete('/api/notebooks/:id', authenticateToken, async (req, res) => {
+    try {
+        const nbRes = await db.query('SELECT name FROM notebooks WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        if (nbRes.rows.length === 0) return res.status(404).json({ error: 'Notebook not found' });
+        const name = nbRes.rows[0].name;
+
+        await db.query('UPDATE notebooks SET is_deleted = 1 WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        await db.query('INSERT INTO trash (user_id, item_id, item_type, item_name, expires_at) VALUES ($1, $2, $3, $4, $5)',
+            [req.user.id, req.params.id, 'notebook', name, new Date(Date.now() + 30*24*60*60*1000)]);
+        res.json({ message: 'Notebook moved to trash' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post('/api/change-password', authenticateToken, async (req, res) => {
     const { oldPassword, newPassword } = req.body;
     if (!newPassword || newPassword.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters' });
@@ -149,6 +164,16 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
         const hashed = await bcrypt.hash(newPassword, 10);
         await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashed, req.user.id]);
         res.json({ message: 'Password changed' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/user', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT id, email, full_name, avatar as avatar_url, plan FROM users WHERE id = $1', [req.user.id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        res.json(result.rows[0]);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -197,8 +222,18 @@ app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
 // --- Sources (Drive Files) Routes ---
 
 app.get('/api/sources', authenticateToken, async (req, res) => {
+    const { q } = req.query;
     try {
-        const result = await db.query('SELECT * FROM sources WHERE user_id = $1 AND is_deleted = 0 ORDER BY created_at DESC', [req.user.id]);
+        let sql = 'SELECT *, name as title, name as filename FROM sources WHERE user_id = $1 AND is_deleted = 0';
+        const params = [req.user.id];
+
+        if (q) {
+            sql += ' AND name ILIKE $2';
+            params.push(`%${q}%`);
+        }
+
+        sql += ' ORDER BY created_at DESC';
+        const result = await db.query(sql, params);
         res.json(result.rows);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -272,10 +307,14 @@ app.patch('/api/sources/:id', authenticateToken, async (req, res) => {
 
 app.delete('/api/sources/:id', authenticateToken, async (req, res) => {
     try {
+        const sourceRes = await db.query('SELECT name FROM sources WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        if (sourceRes.rows.length === 0) return res.status(404).json({ error: 'Source not found' });
+        const name = sourceRes.rows[0].name;
+
         // Move to trash: keep file but mark as deleted
         await db.query('UPDATE sources SET is_deleted = 1 WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
-        await db.query('INSERT INTO trash (user_id, item_id, item_type, expires_at) VALUES ($1, $2, $3, $4)',
-            [req.user.id, req.params.id, 'source', new Date(Date.now() + 30*24*60*60*1000)]);
+        await db.query('INSERT INTO trash (user_id, item_id, item_type, item_name, expires_at) VALUES ($1, $2, $3, $4, $5)',
+            [req.user.id, req.params.id, 'source', name, new Date(Date.now() + 30*24*60*60*1000)]);
         res.json({ message: 'Source moved to trash' });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -430,7 +469,13 @@ app.put('/api/notes/:id', authenticateToken, async (req, res) => {
 
 app.delete('/api/notes/:id', authenticateToken, async (req, res) => {
     try {
+        const noteRes = await db.query('SELECT title FROM notes WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        if (noteRes.rows.length === 0) return res.status(404).json({ error: 'Note not found' });
+        const name = noteRes.rows[0].title;
+
         await db.query('UPDATE notes SET is_deleted = 1 WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+        await db.query('INSERT INTO trash (user_id, item_id, item_type, item_name, expires_at) VALUES ($1, $2, $3, $4, $5)',
+            [req.user.id, req.params.id, 'note', name, new Date(Date.now() + 30*24*60*60*1000)]);
         res.json({ message: 'Note moved to trash' });
     } catch (e) {
         res.status(500).json({ error: e.message });

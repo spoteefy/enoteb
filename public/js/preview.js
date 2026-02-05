@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const token = localStorage.getItem('token');
     const urlParams = new URLSearchParams(window.location.search);
     const docId = urlParams.get('id');
+    const notebookId = urlParams.get('notebookId');
 
     if (!token) {
         window.location.href = 'login.html';
@@ -34,19 +35,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            docName.textContent = doc.title || doc.filename;
+            docName.textContent = doc.name;
             docMeta.textContent = `Trình xem tài liệu • ${new Date(doc.updated_at).toLocaleDateString()}`;
 
-            // Mock content
             docContent.innerHTML = `
-                <h2 class="text-3xl font-bold text-slate-900 mb-8">${doc.title || doc.filename}</h2>
-                <p class="text-base leading-relaxed text-slate-700">Đây là nội dung của tài liệu được trích xuất. Bạn có thể bôi đen văn bản để tạo trích dẫn.</p>
-                <div class="relative p-4 bg-slate-50 border-l-4 border-primary selectable-text">
-                    Các mô hình ngôn ngữ lớn (LLM) hiện nay không chỉ dừng lại ở việc xử lý văn bản, mà còn có khả năng tích hợp đa phương thức, cho phép AI hiểu và tạo ra cả hình ảnh, âm thanh và mã nguồn với độ chính xác vượt trội. Điều này sẽ rút ngắn quy trình phát triển sản phẩm từ vài tháng xuống còn vài ngày.
-                </div>
-                <p class="text-base leading-relaxed text-slate-700 mt-6">
-                    Khảo sát từ Gartner cho thấy 80% các nhà lãnh đạo CNTT đang lên kế hoạch triển khai ít nhất một ứng dụng Generative AI trong vòng 12 tháng tới.
-                </p>
+                <h2 class="text-3xl font-bold text-slate-900 mb-8">${doc.name}</h2>
+                <div class="text-base leading-relaxed text-slate-700 whitespace-pre-wrap">${doc.content || 'Không có nội dung.'}</div>
             `;
 
             setupCitation();
@@ -74,14 +68,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         const text = noteTextarea.value.trim();
         if (!text) return;
 
-        // Simulate saving
+        if (!notebookId) {
+            alert('Vui lòng mở tài liệu từ một Notebook để lưu ghi chú.');
+            return;
+        }
+
         saveNoteBtn.textContent = 'Đang lưu...';
-        setTimeout(() => {
+        try {
+            const citation = citationText.textContent;
+            const content = `<blockquote>${citation}</blockquote><br><p>${text}</p>`;
+
+            await fetch('/api/notes', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    notebook_id: notebookId,
+                    title: `Ghi chú từ ${docName.textContent}`,
+                    content: content
+                })
+            });
+
             saveNoteBtn.textContent = 'Đã lưu!';
-            setTimeout(() => saveNoteBtn.textContent = 'Lưu ghi chú', 2000);
-            noteTextarea.value = '';
-            activeCitation.classList.add('hidden');
-        }, 1000);
+            setTimeout(() => {
+                saveNoteBtn.textContent = 'Lưu ghi chú';
+                noteTextarea.value = '';
+                activeCitation.classList.add('hidden');
+            }, 2000);
+        } catch (e) {
+            alert('Lỗi khi lưu ghi chú');
+            saveNoteBtn.textContent = 'Lưu ghi chú';
+        }
     };
 
     closePreview.onclick = () => {

@@ -60,8 +60,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="material-symbols-outlined text-base">picture_as_pdf</span>
                 </div>
                 <p class="text-xs font-semibold truncate flex-1">${s.name}</p>
+                <button class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white transition-opacity preview-btn">
+                    <span class="material-symbols-outlined text-sm">open_in_full</span>
+                </button>
             `;
             item.querySelector('p').onclick = () => selectSource(s);
+            item.querySelector('.preview-btn').onclick = (e) => {
+                e.stopPropagation();
+                window.location.href = `preview.html?id=${s.id}&notebookId=${notebookId}`;
+            };
             item.querySelector('.source-active-check').onchange = async (e) => {
                 await apiRequest(`/notebooks/${notebookId}/sources/${s.id}`, {
                     method: 'PATCH',

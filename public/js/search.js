@@ -44,13 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const div = document.createElement('div');
             div.className = 'bg-white dark:bg-surface-dark p-5 rounded-2xl border border-slate-200 dark:border-border-dark hover:border-primary/50 transition-all group cursor-pointer';
 
-            const format = item.filename ? item.filename.split('.').pop().toUpperCase() : 'NOTE';
+            const format = item.name ? item.name.split('.').pop().toUpperCase() : 'NOTE';
             const icon = format === 'PDF' ? 'picture_as_pdf' : 'description';
             const iconColor = format === 'PDF' ? 'text-red-600' : 'text-blue-600';
             const iconBg = format === 'PDF' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-blue-100 dark:bg-blue-900/30';
 
-            const title = item.title || item.filename;
-            const highlightedTitle = title.replace(new RegExp(query, 'gi'), match => `<span class="highlight-text">${match}</span>`);
+            const highlightedTitle = item.name.replace(new RegExp(query, 'gi'), match => `<span class="highlight-text">${match}</span>`);
 
             div.innerHTML = `
                 <div class="flex items-start justify-between gap-4 mb-2">
@@ -66,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="text-slate-400 hover:text-primary"><span class="material-symbols-outlined">bookmark</span></button>
                 </div>
                 <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed line-clamp-2">
-                    Tài liệu liên quan đến "${query}". Xem chi tiết để biết thêm thông tin về các ứng dụng và nghiên cứu.
+                    ${item.content ? item.content.substring(0, 150) + '...' : `Tài liệu liên quan đến "${query}".`}
                 </p>
             `;
 
@@ -78,38 +77,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function generateAIAnalysis(query, results) {
+        if (results.length === 0) {
+            aiAnalysisIntro.innerHTML = "Không có đủ dữ liệu để AI phân tích.";
+            aiAnalysisContent.innerHTML = "";
+            return;
+        }
+
         aiAnalysisIntro.innerHTML = `Dựa trên ${results.length} tài liệu trong kho tri thức của bạn, đây là tóm tắt về <strong>"${query}"</strong>:`;
         aiAnalysisContent.innerHTML = '<div class="flex justify-center"><span class="material-symbols-outlined animate-spin">sync</span></div>';
 
-        // Simulate AI thinking
-        setTimeout(() => {
+        try {
+            const sourceIds = results.map(r => r.id);
+            const res = await fetch('/api/ai/fast-analysis', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sourceIds })
+            });
+            const data = await res.json();
+
             aiAnalysisContent.innerHTML = `
-                <div class="flex items-start gap-3">
-                    <div class="mt-1 w-1.5 h-1.5 rounded-full bg-primary shrink-0"></div>
-                    <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                        <span class="font-semibold text-slate-900 dark:text-white">Xu hướng hiện tại:</span>
-                        Phân tích cho thấy "${query}" đang là tâm điểm chú ý với nhiều ứng dụng thực tiễn trong công nghiệp.
-                    </p>
-                </div>
-                <div class="flex items-start gap-3">
-                    <div class="mt-1 w-1.5 h-1.5 rounded-full bg-primary shrink-0"></div>
-                    <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                        <span class="font-semibold text-slate-900 dark:text-white">Dữ liệu từ kho:</span>
-                        Các tài liệu của bạn đề cập đến việc tối ưu hóa quy trình thông qua "${query}".
-                    </p>
+                <div class="flex flex-col gap-4">
+                    <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">${data.summary}</p>
                 </div>
             `;
 
-            suggestedTopics.innerHTML = `
-                <button class="px-3 py-1.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-xs font-medium hover:text-primary hover:border-primary transition-all flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">search</span>
-                    Ứng dụng của ${query}
-                </button>
-                <button class="px-3 py-1.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-xs font-medium hover:text-primary hover:border-primary transition-all flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">search</span>
-                    Tương lai ${query} 2025
-                </button>
-            `;
-        }, 1500);
+            suggestedTopics.innerHTML = '';
+            (data.topics || []).forEach(topic => {
+                const btn = document.createElement('button');
+                btn.className = "px-3 py-1.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-xs font-medium hover:text-primary hover:border-primary transition-all flex items-center gap-1";
+                btn.innerHTML = `<span class="material-symbols-outlined text-sm">local_offer</span> ${topic.title}`;
+                suggestedTopics.appendChild(btn);
+            });
+        } catch (e) {
+            aiAnalysisContent.innerHTML = '<p class="text-red-500 text-sm">AI analysis failed.</p>';
+        }
     }
 });

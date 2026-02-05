@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tr = document.createElement('tr');
             tr.className = 'group hover:bg-primary/[0.02] transition-colors cursor-pointer';
 
-            const format = source.filename ? source.filename.split('.').pop().toUpperCase() : 'NOTE';
+            const format = source.name ? source.name.split('.').pop().toUpperCase() : 'NOTE';
             const icon = format === 'PDF' ? 'picture_as_pdf' : (format === 'DOCX' ? 'description' : 'article');
             const iconColor = format === 'PDF' ? 'text-red-400' : (format === 'DOCX' ? 'text-blue-400' : 'text-green-400');
             const bgColor = format === 'PDF' ? 'bg-red-500/10' : (format === 'DOCX' ? 'bg-blue-500/10' : 'bg-green-500/10');
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="w-8 h-8 rounded-lg ${bgColor} flex items-center justify-center ${iconColor}">
                             <span class="material-symbols-outlined text-lg">${icon}</span>
                         </div>
-                        <span class="text-slate-200 font-medium group-hover:text-white transition-colors">${source.title || source.filename}</span>
+                        <span class="text-slate-200 font-medium group-hover:text-white transition-colors">${source.name}</span>
                     </div>
                 </td>
                 <td class="px-4 py-4 text-slate-500 text-center">${format}</td>
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     sourceSearch.addEventListener('input', (e) => {
         const q = e.target.value.toLowerCase();
-        const filtered = allSources.filter(s => (s.title || s.filename).toLowerCase().includes(q));
+        const filtered = allSources.filter(s => (s.name || '').toLowerCase().includes(q));
         renderSources(filtered);
     });
 
@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         const name = document.getElementById('name').value;
         const description = document.getElementById('desc').value;
+        const sourceIds = Array.from(selectedSourceIds);
 
         try {
             const res = await fetch('/api/notebooks', {
@@ -96,21 +97,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ name, description })
+                body: JSON.stringify({ name, description, sourceIds })
             });
             const notebook = await res.json();
-
-            // Link selected sources
-            for (const sourceId of selectedSourceIds) {
-                await fetch(`/api/notebooks/${notebook.id}/sources`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ sourceId })
-                });
-            }
 
             window.location.href = `notebook.html?id=${notebook.id}`;
         } catch (err) {

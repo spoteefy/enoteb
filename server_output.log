@@ -1,2 +1,6 @@
 [dotenv@17.2.3] injecting env (7) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
 Server running on port 3000
+Cleanup error: [Error: SQLITE_READONLY: attempt to write a readonly database] {
+  errno: 8,
+  code: 'SQLITE_READONLY'
+}

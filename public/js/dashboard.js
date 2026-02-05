@@ -119,6 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const data = await apiRequest('/ai/fast-analysis', { method: 'POST', body: JSON.stringify({ sourceIds }) });
             localStorage.setItem('selectedSources', JSON.stringify(sourceIds));
+            localStorage.setItem('lastAnalysis', JSON.stringify(data));
             window.location.href = 'analysis.html';
         } catch (e) {
             alert('Analysis failed');
@@ -136,17 +137,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     closeNotifications.onclick = () => notificationModal.classList.add('hidden');
 
     const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('fileInput');
     const uploadProgressModal = document.getElementById('uploadProgressModal');
     const closeUploadProgress = document.getElementById('closeUploadProgress');
+    const uploadList = document.getElementById('uploadList');
 
-    uploadBtn.onclick = () => {
+    uploadBtn.onclick = () => fileInput.click();
+
+    fileInput.onchange = async () => {
+        const files = Array.from(fileInput.files);
+        if (files.length === 0) return;
+
         uploadProgressModal.classList.remove('hidden');
-        // Simulate upload
+        uploadList.innerHTML = '';
+
+        for (const file of files) {
+            const item = document.createElement('div');
+            item.className = 'space-y-2';
+            item.innerHTML = `
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-700 dark:text-slate-200 truncate">${file.name}</span>
+                    <span class="font-bold text-primary status">0%</span>
+                </div>
+                <div class="w-full bg-slate-200/50 dark:bg-white/10 h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-primary h-full progress-bar" style="width: 0%"></div>
+                </div>
+            `;
+            uploadList.appendChild(item);
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', file.name.split('.').pop().toLowerCase());
+
+            try {
+                // For simplicity, we use fetch and don't track detailed progress in this vanilla example,
+                // but we simulate the progress bar until the request finishes.
+                const statusText = item.querySelector('.status');
+                const progressBar = item.querySelector('.progress-bar');
+
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 10;
+                    if (progress > 90) clearInterval(interval);
+                    statusText.textContent = `${progress}%`;
+                    progressBar.style.width = `${progress}%`;
+                }, 100);
+
+                await fetch('/api/sources', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                    body: formData
+                });
+
+                clearInterval(interval);
+                statusText.textContent = 'Xong';
+                progressBar.style.width = '100%';
+            } catch (e) {
+                item.querySelector('.status').textContent = 'Lỗi';
+                item.querySelector('.progress-bar').classList.add('bg-red-500');
+            }
+        }
+
         setTimeout(() => {
             uploadProgressModal.classList.add('hidden');
             loadData();
-        }, 3000);
+            fileInput.value = '';
+        }, 1000);
     };
+
     closeUploadProgress.onclick = () => uploadProgressModal.classList.add('hidden');
 
     document.getElementById('createCategoryBtn').onclick = async () => {

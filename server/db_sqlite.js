@@ -9,6 +9,7 @@ const runQuery = (sql, params = []) => {
     // Also remove RETURNING clause which SQLite doesn't like in all versions
     let processedSql = sql.replace(/\$\d+/g, '?');
     processedSql = processedSql.replace(/RETURNING \w+/gi, '');
+    processedSql = processedSql.replace(/ILIKE/gi, 'LIKE');
 
     return new Promise((resolve, reject) => {
         if (processedSql.trim().toUpperCase().startsWith('INSERT') ||
@@ -95,6 +96,7 @@ const initDb = async () => {
                 user_id INTEGER,
                 item_id INTEGER,
                 item_type TEXT,
+                item_name TEXT,
                 deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 expires_at TIMESTAMP
             )`);

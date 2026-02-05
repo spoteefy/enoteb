@@ -62,8 +62,8 @@ async function populate() {
         [userId, 'Tài liệu nghiên cứu AI.pdf', 'pdf', 1]
     );
     await db.query(
-        "INSERT INTO trash (user_id, item_id, item_type, expires_at) VALUES ($1, $2, $3, $4)",
-        [userId, ts1.rows[0].id, 'source', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)]
+        "INSERT INTO trash (user_id, item_id, item_type, item_name, expires_at) VALUES ($1, $2, $3, $4, $5)",
+        [userId, ts1.rows[0].id, 'source', 'Tài liệu nghiên cứu AI.pdf', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)]
     );
 
     // Create notifications

@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                             <span class="material-symbols-outlined ${color} text-lg">${icon}</span>
                         </div>
-                        <span class="text-sm font-semibold tracking-tight">${item.item_type.toUpperCase()}: ${item.item_id}</span>
+                        <span class="text-sm font-semibold tracking-tight">${item.item_name || (item.item_type.toUpperCase() + ': ' + item.item_id)}</span>
                     </div>
                 </td>
                 <td class="px-6 py-5 text-sm text-slate-500 font-medium">${new Date(item.deleted_at).toLocaleString()}</td>
